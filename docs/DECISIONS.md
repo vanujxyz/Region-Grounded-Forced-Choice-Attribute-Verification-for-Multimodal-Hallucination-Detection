@@ -328,3 +328,104 @@ metric scan and two narrower tests were added:
     fails.
 
 The test catching this is the intended behaviour, not a nuisance.
+
+---
+
+## M2 — 2026-09-07
+
+### D-011 (resolved) — confidence is uncalibrated and is not a claim
+
+`k` stays at the specified **10.0**. Owner ruling: accuracy derives from the tau
+comparison, not from the confidence value, so saturation affects **no reported
+metric**.
+
+Recorded for the paper: **the confidence output of this system is uncalibrated,
+and calibration is not a claim of this work.** On the logit scale used for tau
+(D-011 above), `sigmoid(10 * (s - tau))` saturates to 0.0/1.0 almost everywhere;
+forced-choice confidences are a 2-way softmax over logits several units apart and
+are similarly extreme. Confidences are reported because TRD §7 requires them, not
+because they are meaningful as probabilities.
+
+Revisit only if the M4 demo output (D6) proves unusable.
+
+### D-012 (resolved) — fit-on-eval, and the free-parameter asymmetry
+
+The fit-on-eval protocol stays: tau is fitted by sweeping on the same split it is
+scored on, per TRD §7. The bias favours the threshold cells, which are the
+baseline, so the comparison runs conservative with respect to this project's own
+hypothesis.
+
+**1. The asymmetry, stated explicitly for the paper.**
+
+| cell | region | decision | free parameters fitted on the evaluation data |
+|---|---|---|---|
+| A (baseline) | full image | threshold | **1** (tau) |
+| B | full image | forced choice | **0** |
+| C | crop | threshold | **1** (its own tau) |
+| D (proposed) | crop | forced choice | **0** |
+
+Cells A and C each get a parameter tuned on the very questions they are scored
+on. Cells B and D have **no free parameter at all** -- there is nothing in them
+to tune. Any advantage this confers goes to the baseline. If D beats A under
+these conditions, the margin is a floor, not a ceiling; if D loses, the loss is
+not explained by A having been tuned unfairly in D's favour, because it was
+tuned in *A's* favour.
+
+**2. Labelling protocol, fixed now, before any dev number exists.**
+
+- Every dev-split number -- M2's 100 pairs and M3's full dev run alike -- is
+  labelled **fit-on-eval** wherever a tau is involved (cells A and C). The label
+  travels with the number into every table and into the paper.
+- The **headline comparison is the M5 test-split run**, with tau **frozen** from
+  the dev fit and not refitted. That is the only number where the threshold cells
+  have no evaluation-data advantage.
+- The test split is opened exactly once, at TRD §15 step 14 (PRD §8 rule 6).
+- Dev numbers are development evidence and a go/no-go signal. They are not the
+  headline result and must not be presented as one.
+
+Confirmed by the owner and recorded before any dev number existed.
+
+### D-016 — environment pinned exactly
+
+`requirements.txt` pins every version, replacing TRD §0's ranges. A spec saying
+`transformers >= 4.45` resolves differently over time and the numbers stop
+reproducing (PRD §8 rule 7). torch/torchvision need the cu124 index; spaCy's
+`en_core_web_sm` installs separately. Versions recorded are those the reported
+numbers were produced with.
+
+### D-017 — M2 result, first and only run
+
+Cell A and Cell D were each executed **once** on the same 100 dev pairs (200
+question ids, 62 distinct triples, 33 images). No setting was changed between
+them and neither was re-run. The detector threshold (0.10), crop padding (0.10),
+prompt template and `k` are exactly as specified.
+
+| cell | accuracy | 95% CI | free params fitted on eval |
+|---|---|---|---|
+| A (baseline) | **0.63** | [0.5934, 0.6649] | 1 (tau = -13.3014) |
+| D (proposed) | **0.86** | [0.7810, 0.9268] | 0 |
+| position-only | 1.0000 | [1.0, 1.0] | 0 (artifact) |
+
+Paired bootstrap over images, D - A, 10,000 resamples, seed 20260907:
+**+0.2300, 95% CI [+0.1515, +0.3021], excludes zero.**
+
+**No tuning was performed.** The tuning log below remains empty.
+
+**Leakage audit (because Cell D scored 34/34 on action).** Verified on the Cell D
+output before reporting:
+  - "yes" landed on the lower id in 86% of pairs -- exactly equal to the
+    accuracy. This is an identity, not a leak: forced choice emits one yes per
+    pair, and the gold positive is always the lower id (D-009), so accuracy and
+    yes-on-lower-id are the same quantity. Genuine id leakage would show 100%
+    here and 1.00 accuracy, as the position-only baseline does.
+  - `pred == argmax(raw_scores)` for all 200 records, 0 mismatches.
+  - Action's 34/34 comes from 17 pairs over 14 distinct triples of easy contrasts
+    (sit/stand, run/walk, laugh/cry) with median score margin 4.32 logits.
+    Small n, wide margins -- not evidence of a defect, but n=17 pairs.
+
+**Fallback rate 0.05.** 10 of 200 questions fell back to the full image, where
+Cell D is behaviourally identical to Cell B. Cell D scores 0.8737 on the 190
+non-fallback questions and 0.6000 on the 10 fallback ones.
+
+**Peak VRAM 1.654 GiB used of 3.999 GiB** during two-model staging (torch
+allocator peak 0.772 GiB). No OOM. Sequential load/free worked as designed.

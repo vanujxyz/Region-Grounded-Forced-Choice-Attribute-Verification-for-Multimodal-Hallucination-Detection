@@ -62,6 +62,55 @@ def _gpu_name() -> str:
         return "NOT_COMPUTED"
 
 
+class VramTracker:
+    """Peak VRAM across the whole pipeline, including two-model staging.
+
+    Reports both torch's allocator peak and the minimum free VRAM observed via
+    the driver, which also captures non-torch overhead (context, fragmentation).
+    """
+
+    def __init__(self):
+        import torch
+
+        self.torch = torch
+        self.ok = torch.cuda.is_available()
+        self.min_free = None
+        self.total = None
+        self.stages: dict[str, float] = {}
+        if self.ok:
+            torch.cuda.reset_peak_memory_stats()
+            free, total = torch.cuda.mem_get_info()
+            self.total = total
+            self.min_free = free
+
+    def sample(self) -> None:
+        if not self.ok:
+            return
+        free, _ = self.torch.cuda.mem_get_info()
+        self.min_free = free if self.min_free is None else min(self.min_free, free)
+
+    def mark(self, stage: str) -> None:
+        if not self.ok:
+            return
+        self.sample()
+        self.stages[stage] = self.torch.cuda.max_memory_allocated() / 1024**3
+
+    def as_dict(self) -> dict[str, Any]:
+        if not self.ok:
+            return {"available": False, "peak_allocated_gib": "NOT_COMPUTED",
+                    "peak_used_gib": "NOT_COMPUTED", "total_gib": "NOT_COMPUTED",
+                    "per_stage_peak_allocated_gib": {}}
+        peak_alloc = self.torch.cuda.max_memory_allocated() / 1024**3
+        return {
+            "available": True,
+            "peak_allocated_gib": peak_alloc,
+            "peak_used_gib": (self.total - self.min_free) / 1024**3,
+            "min_free_gib": self.min_free / 1024**3,
+            "total_gib": self.total / 1024**3,
+            "per_stage_peak_allocated_gib": dict(self.stages),
+        }
+
+
 def write_manifest(run_id: str, cfg: dict, args, extra: dict[str, Any]) -> Path:
     """PRD §8 rule 5: every result file records commit, config, revisions, seed, time."""
     raw = paths()["results_raw"]
@@ -138,24 +187,32 @@ def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> d
 
     images_dir = paths()["images"]
     needs_crop = CELL_REGION[cell] == "crop"
+    vram = VramTracker()
 
     # ---- Stage 1: detection (only for crop cells). Freed before stage 2. ----
     crops: dict[str, dict] = {}
+    det_scores: list[float] = []
     if needs_crop:
         from src.modules.detector import Detector
 
         with Detector(cfg) as det:
+            vram.mark("detector_loaded")
             for p in pairs:
                 key = f"{p.image}|{p.obj}"
                 if key in crops:
                     continue
                 img = Image.open(images_dir / p.image).convert("RGB")
                 c = det.crop_region(img, p.obj)
+                if c.detector_score is not None:
+                    det_scores.append(c.detector_score)
                 crops[key] = {
                     "box": c.box,
                     "fell_back": c.fell_back,
                     "detector_score": c.detector_score,
                 }
+                vram.sample()
+            vram.mark("detector_stage_end")
+        vram.mark("detector_freed")
 
     # ---- Stage 2: scoring ----
     records: list[dict] = []
@@ -198,12 +255,51 @@ def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> d
             records.extend(recs)
 
         ties = scorer.tie_log.as_dict()
+        vram.mark("scorer_stage_end")
 
     qtypes = _qtype_map()
     for r in records:
         r["qtype"] = qtypes[r["id"]]
 
-    return {"records": records, "tau": tau_info, "ties": ties, "n_pairs": len(pairs)}
+    return {
+        "records": records,
+        "tau": tau_info,
+        "ties": ties,
+        "n_pairs": len(pairs),
+        "vram": vram.as_dict(),
+        "detection_scores": summarise_scores(det_scores),
+        "n_unique_regions": len(crops) if needs_crop else "NOT_APPLICABLE",
+    }
+
+
+def summarise_scores(scores: list[float]) -> dict[str, Any]:
+    """Distribution of OWLv2 scores for the objects that WERE found."""
+    if not scores:
+        return {"n": 0, "min": "NOT_COMPUTED", "p25": "NOT_COMPUTED",
+                "median": "NOT_COMPUTED", "p75": "NOT_COMPUTED",
+                "max": "NOT_COMPUTED", "mean": "NOT_COMPUTED", "histogram": {}}
+    import statistics
+
+    xs = sorted(scores)
+
+    def pct(q):
+        if len(xs) == 1:
+            return xs[0]
+        i = q * (len(xs) - 1)
+        lo, hi = int(i), min(int(i) + 1, len(xs) - 1)
+        return xs[lo] + (i - lo) * (xs[hi] - xs[lo])
+
+    edges = [0.10, 0.15, 0.20, 0.30, 0.40, 0.50, 0.70, 1.01]
+    hist: dict[str, int] = {}
+    prev = 0.0
+    for e in edges:
+        hist[f"[{prev:.2f},{e:.2f})"] = sum(1 for x in xs if prev <= x < e)
+        prev = e
+    return {
+        "n": len(xs), "min": xs[0], "p25": pct(0.25), "median": pct(0.50),
+        "p75": pct(0.75), "max": xs[-1], "mean": statistics.fmean(xs),
+        "histogram": hist,
+    }
 
 
 def run_position_only(split: str, limit: int | None) -> dict:
@@ -233,6 +329,17 @@ def _report(name: str, result: dict) -> dict:
     print(f"  fallback rate    : {m['fallback_rate']}")
     print(f"  tau              : {result['tau']}")
     print(f"  ties             : {result['ties']}")
+    if "vram" in result:
+        v = result["vram"]
+        print(f"  VRAM peak alloc  : {v['peak_allocated_gib']}")
+        print(f"  VRAM peak used   : {v.get('peak_used_gib')} of {v.get('total_gib')} GiB")
+        print(f"  VRAM per stage   : {v.get('per_stage_peak_allocated_gib')}")
+    if result.get("detection_scores"):
+        d = result["detection_scores"]
+        print(f"  detections found : {d['n']} (unique regions: {result.get('n_unique_regions')})")
+        print(f"  det score min/med/max : {d['min']} / {d['median']} / {d['max']}")
+        print(f"  det score mean/p25/p75: {d['mean']} / {d['p25']} / {d['p75']}")
+        print(f"  det score histogram   : {d['histogram']}")
     return m
 
 
@@ -278,7 +385,14 @@ def main(argv: list[str] | None = None) -> int:
         write_jsonl(result["records"], out_dir / f"{run_id}.jsonl")
         write_manifest(
             run_id, cfg, args,
-            {"tau": result["tau"], "ties": result["ties"], "n_pairs": result["n_pairs"]},
+            {
+                "tau": result["tau"],
+                "ties": result["ties"],
+                "n_pairs": result["n_pairs"],
+                "vram": result.get("vram"),
+                "detection_scores": result.get("detection_scores"),
+                "n_unique_regions": result.get("n_unique_regions"),
+            },
         )
     return 0
 

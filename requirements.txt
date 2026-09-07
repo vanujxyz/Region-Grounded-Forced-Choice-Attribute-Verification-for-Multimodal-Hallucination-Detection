@@ -1,0 +1,42 @@
+# Exact environment pin. TRD §0 gives ranges (">= 4.45"), which resolve
+# differently over time and would break reproducibility (PRD §8 rule 7:
+# same config + same commit = identical numbers).
+#
+# These are the versions the reported numbers were produced with.
+# Python 3.11.16 (conda env `capstone`).
+#
+# torch/torchvision come from the CUDA 12.4 index, not PyPI:
+#   pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu124
+#
+# Install en_core_web_sm separately (spaCy model, not a PyPI package):
+#   python -m spacy download en_core_web_sm
+
+# --- deep learning ---
+torch==2.6.0+cu124
+torchvision==0.21.0+cu124
+transformers==5.16.1
+tokenizers==0.23.2
+safetensors==0.8.0
+huggingface-hub==1.30.0
+
+# Required by the SigLIP tokenizer; not listed in TRD §0 (see D-013).
+sentencepiece==0.2.2
+protobuf==7.36.1
+
+# --- NLP (claim splitter, §13 demo) ---
+spacy==3.8.16
+
+# --- scientific / data ---
+numpy==2.4.6
+scipy==1.17.1
+pandas==3.0.5
+pillow==12.3.0
+
+# --- config / validation ---
+PyYAML==6.0.3
+pydantic==2.13.5
+tqdm==4.70.0
+
+# --- dev ---
+pytest==9.1.1
+ruff==0.16.6

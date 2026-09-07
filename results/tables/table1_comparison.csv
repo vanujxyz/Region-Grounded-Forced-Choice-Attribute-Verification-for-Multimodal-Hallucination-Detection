@@ -1,0 +1,2 @@
+comparison,point,mean,ci_low,ci_high,excludes_zero,n_images,n_resamples,split,protocol
+D minus A,0.22999999999999998,0.22998183257410296,0.15150634249471456,0.30208333333333326,True,33,10000,dev (limit 100),fit-on-eval for A; D has no free parameter
