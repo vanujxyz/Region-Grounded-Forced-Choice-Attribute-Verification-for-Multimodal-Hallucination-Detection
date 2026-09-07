@@ -446,3 +446,98 @@ Neither sentinel may ever stand in for a number that was actually produced; a
 bare `0`, `0.0`, empty string or null still fails the check. Two tests were added:
 one asserting the sentinels stay distinct and non-numeric, one asserting that any
 B/D manifest declares `tau: NOT_APPLICABLE` explicitly.
+
+### D-019 — Cells B and C; the attribution is not what the framing assumed
+
+Run once each on the same 100 dev pairs, same 200 ids, no settings changed.
+
+|  | threshold | forced choice |
+|---|---|---|
+| **whole image** | A **0.6300** | B **0.7900** |
+| **cropped region** | C **0.6400** | D **0.8600** |
+
+Paired bootstrap over images (10,000, seed 20260907):
+
+| contrast | isolates | Δ | 95% CI | |
+|---|---|---|---|---|
+| C − A | **region grounding alone** | **+0.0100** | [−0.0490, +0.0680] | **includes zero** |
+| B − A | **forced choice alone** | +0.1600 | [+0.0859, +0.2330] | excludes zero |
+| D − A | both (headline) | +0.2300 | [+0.1515, +0.3021] | excludes zero |
+| D − C | forced choice, given cropping | +0.2200 | [+0.1402, +0.2935] | excludes zero |
+| D − B | cropping, given forced choice | +0.0700 | [+0.0217, +0.1215] | excludes zero |
+
+Interaction (D−A) − (B−A) − (C−A) = **+0.0600**, superadditive.
+
+**The finding: region grounding alone does nothing measurable here.** C − A is
++0.01 with a CI straddling zero. Cropping only pays once forced choice is in
+place (D − B = +0.07, excludes zero). Forced choice is the dominant term. PRD §2
+presents the contribution as "two independent changes"; at this sample size only
+one of them is independently supported, and the other is justified solely by the
+interaction. This must not be smoothed over in the paper.
+
+### D-020 — forced choice inherits the dataset's balance prior (raise at the review)
+
+Predicted-yes counts, against a gold of exactly 100 yes / 100 no:
+
+| cell | predicted yes |
+|---|---|
+| A | 136 |
+| B | **100** |
+| C | 60 |
+| D | **100** |
+
+Forced choice emits exactly one yes per pair **by construction**, so B and D
+cannot deviate from a 50/50 yes rate. AMBER's attribute pairs are exactly
+balanced (PRD §6: 2382/2382 state, 396/396 action), so that structural constraint
+matches the gold distribution perfectly.
+
+The threshold cells have no such information: A over-predicts yes (136/200), C
+under-predicts (60/200), and both are penalised for it.
+
+**Part of the B/D advantage is therefore a free prior handed to them by the
+dataset's construction, not better attribute binding.** A reviewer will raise
+this. Two mitigations to discuss at the M2 review, neither yet implemented:
+  - report balanced accuracy or per-class metrics alongside raw accuracy;
+  - report a threshold cell with tau fitted to match the base rate, isolating
+    calibration from discrimination.
+
+Flagged, not fixed. It changes what the headline number means.
+
+### D-021 — proposal: id-randomised diagnostic set (cost reported, NOT run)
+
+**A correction to the proposal as framed.** "Randomize which id holds the gold
+positive" cannot be done to AMBER itself: an id is bound to a question's text, so
+id 1005 *is* "Is the sky sunny in this image?" with gold yes. Swapping the labels
+fabricates a dataset variant whose ids no longer mean what AMBER's mean -- and
+TRD §11.1 chooses per-id accuracy precisely so numbers stay "directly comparable
+with published AMBER numbers". Randomising ids in the reported evaluation path
+would forfeit that.
+
+**Proposal instead: a diagnostic-only permuted variant**, built behind a flag,
+never used for any reported accuracy, used once to falsify the leakage question.
+
+Expected outcomes, stated in advance:
+  - **position-only drops to ~0.50** -- the informative result, and the point of
+    the exercise;
+  - **Cells A and D return bit-identical accuracy.** Neither reads an id: the
+    option list is alphabetical (D-009 guards this with static and behavioural
+    tests) and the prediction is a function of (image, obj, attr) only. The id
+    appears solely as the key a record is filed under. This is the same
+    structural argument as D-006.
+
+**Cost, measured, not estimated.** Model load dominates; the scoring loop is
+3-4s per 100 pairs.
+
+| run | wall clock at limit 100 | at full dev (1929 pairs, 19.3x) |
+|---|---|---|
+| Cell B (scorer only) | 23s measured | ~2 min |
+| Cell C (detector + scorer) | 85s measured | ~25 min |
+| Cell A re-run | ~25s | ~2 min |
+| Cell D re-run | ~85s | ~25 min |
+| **A + D at limit 100** | **~2 min** | ~27 min |
+
+**Recommendation: do it at limit 100 only, once.** Two minutes converts a static
+audit into an empirical falsification, which is cheap insurance on the project's
+central claim. Do **not** adopt it as the standing protocol for M3's full dev run:
+~27 minutes for an outcome already known to be bit-identical, and reported
+accuracy must stay on real AMBER ids.

@@ -1,2 +1,6 @@
-comparison,point,mean,ci_low,ci_high,excludes_zero,n_images,n_resamples,split,protocol
-D minus A,0.22999999999999998,0.22998183257410296,0.15150634249471456,0.30208333333333326,True,33,10000,dev (limit 100),fit-on-eval for A; D has no free parameter
+comparison,isolates,point,mean,ci_low,ci_high,excludes_zero,n_images,n_resamples,split,protocol
+C minus A,region grounding alone,0.010000000000000009,0.01007786629190645,-0.0490196078431373,0.06796116504854377,False,33,10000,dev (limit 100),fit-on-eval where tau present
+B minus A,forced choice alone,0.16000000000000003,0.16051823350146607,0.08585497835497835,0.23295454545454541,True,33,10000,dev (limit 100),fit-on-eval where tau present
+D minus A,both (headline),0.22999999999999998,0.22998183257410296,0.15150634249471456,0.30208333333333326,True,33,10000,dev (limit 100),fit-on-eval where tau present
+D minus C,forced choice given cropping,0.21999999999999997,0.2199039662821965,0.1402439024390244,0.29348075388911044,True,33,10000,dev (limit 100),fit-on-eval where tau present
+D minus B,cropping given forced choice,0.06999999999999995,0.06946359907263688,0.021739130434782594,0.12149532710280375,True,33,10000,dev (limit 100),fit-on-eval where tau present

@@ -1,6 +1,6 @@
-cell,label,n,n_distinct_triples,n_distinct_images,accuracy,ci_low,ci_high,precision,recall,f1,fallback_rate,free_params_fitted_on_eval,notes
-A,Whole image + threshold (baseline),200,62,33,0.63,0.5934065934065934,0.6649484536082474,0.5955882352941176,0.81,0.6864406779661016,0.0,1,fit-on-eval
-B,Whole image + forced choice,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,0,not run until TRD step 9
-C,Cropped region + threshold,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,1,not run until TRD step 9
-D,Cropped region + forced choice (proposed),200,62,33,0.86,0.780952380952381,0.926829268292683,0.86,0.86,0.8599999999999999,0.05,0,no free parameter
-position-only,Position-only baseline (BENCHMARK ARTIFACT -- exploits AMBER pair id ordering; sees no image),200,62,33,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0,BENCHMARK ARTIFACT: exploits AMBER pair id ordering; sees no image
+cell,label,n,n_distinct_triples,n_distinct_images,accuracy,ci_low,ci_high,precision,recall,f1,fallback_rate,predicted_yes,gold_yes,free_params_fitted_on_eval,notes
+A,Whole image + threshold (baseline),200,62,33,0.63,0.5934065934065934,0.6649484536082474,0.5955882352941176,0.81,0.6864406779661016,0.0,136,100,1,fit-on-eval
+B,Whole image + forced choice,200,62,33,0.79,0.7156862745098039,0.8571428571428571,0.79,0.79,0.79,0.0,100,100,0,no free parameter
+C,Cropped region + threshold,200,62,33,0.64,0.6020408163265306,0.6801801801801802,0.7333333333333333,0.44,0.5499999999999999,0.05,60,100,1,fit-on-eval
+D,Cropped region + forced choice (proposed),200,62,33,0.86,0.780952380952381,0.926829268292683,0.86,0.86,0.8599999999999999,0.05,100,100,0,no free parameter
+position-only,Position-only baseline (BENCHMARK ARTIFACT -- exploits AMBER pair id ordering; sees no image),200,62,33,1.0,1.0,1.0,1.0,1.0,1.0,0.0,100,100,0,BENCHMARK ARTIFACT: exploits AMBER pair id ordering; sees no image
