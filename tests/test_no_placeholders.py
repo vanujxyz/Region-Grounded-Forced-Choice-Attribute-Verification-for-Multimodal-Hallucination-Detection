@@ -57,22 +57,69 @@ def test_no_placeholder_metrics_in_tables():
                         _check_metric_value(f"{path.name} row {i}", column, value)
 
 
-def _walk(obj, path, where):
+def _walk(obj, path, where, skip_prefix=None):
+    if skip_prefix and path.startswith(skip_prefix):
+        return
     if isinstance(obj, dict):
         for k, v in obj.items():
             if isinstance(v, (dict, list)):
-                _walk(v, f"{path}.{k}", where)
+                _walk(v, f"{path}.{k}", where, skip_prefix)
             elif _is_metric_column(k):
+                if skip_prefix and f"{path}.{k}".startswith(skip_prefix):
+                    continue
                 _check_metric_value(where, f"{path}.{k}", v)
     elif isinstance(obj, list):
         for i, v in enumerate(obj):
-            _walk(v, f"{path}[{i}]", where)
+            _walk(v, f"{path}[{i}]", where, skip_prefix)
+
+
+# A manifest echoes the resolved config verbatim as a record of the run's INPUTS.
+# A null there means "this parameter has not been fitted yet" (e.g. relation.tau
+# before the M4 relation module exists), which is a different thing from "a metric
+# was not computed". The echo is excluded from the metric check; every RESULT
+# field in the manifest is still checked, by the test below.
+_INPUT_ECHO_PREFIX = ".config."
 
 
 def test_no_placeholder_metrics_in_raw_json():
     for path in sorted(RAW.glob("*.json")):
         with path.open(encoding="utf-8") as fh:
-            _walk(json.load(fh), "", path.name)
+            _walk(json.load(fh), "", path.name, skip_prefix=_INPUT_ECHO_PREFIX)
+
+
+def test_manifest_result_fields_are_real_or_not_computed():
+    """The run's own outputs -- tau, tie rate, fit accuracy -- are still checked."""
+    checked = 0
+    for path in sorted(RAW.glob("*.manifest.json")):
+        with path.open(encoding="utf-8") as fh:
+            m = json.load(fh)
+        for key in ("tau", "ties"):
+            if key not in m or m[key] in ("NOT_APPLICABLE", "NOT_COMPUTED"):
+                continue
+            block = m[key]
+            assert isinstance(block, dict), f"{path.name}: {key} should be a dict"
+            for k, v in block.items():
+                if _is_metric_column(k):
+                    _check_metric_value(path.name, f"{key}.{k}", v)
+                    checked += 1
+    assert checked > 0, "no manifest result fields were checked -- has the schema changed?"
+
+
+def test_config_echo_nulls_are_only_unfitted_thresholds():
+    """A null in the config echo must be an unfitted parameter, nothing else."""
+    allowed = {"existence.threshold", "relation.tau", "detector.revision",
+               "attribute.revision", "tau"}
+    for path in sorted(RAW.glob("*.manifest.json")):
+        with path.open(encoding="utf-8") as fh:
+            cfg = json.load(fh).get("config", {})
+        for section, body in cfg.items():
+            if not isinstance(body, dict):
+                continue
+            for k, v in body.items():
+                if v is None:
+                    assert f"{section}.{k}" in allowed or k in allowed, (
+                        f"{path.name}: unexpected null config value {section}.{k}"
+                    )
 
 
 def test_results_directories_exist():

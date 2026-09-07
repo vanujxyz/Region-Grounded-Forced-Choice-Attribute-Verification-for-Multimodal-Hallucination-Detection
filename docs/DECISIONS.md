@@ -308,3 +308,23 @@ upstream checkpoint config, not from this code.
 therefore wrote 594 MB into the project directory as `hf/`. The cache was moved
 to `C:\hf` and the stray directory removed; `.hf_cache/` is gitignored. Always
 quote it: `HF_HOME='C:\hf'`.
+
+### D-015 — manifest config echo vs the no-placeholder rule
+
+`test_no_placeholders.py` fired on the first real manifest: the manifest embeds a
+verbatim echo of the resolved config, which contains `relation.tau: null` and
+`existence.threshold: null` for modules that do not exist until M4.
+
+These are **unfitted inputs**, not uncomputed metrics -- a different thing from
+what PRD §8 rule 1 governs. Rather than blanket-exempting the manifest (which
+would have weakened the check), the `.config.` echo subtree is excluded from the
+metric scan and two narrower tests were added:
+
+  - `test_manifest_result_fields_are_real_or_not_computed` -- every *result*
+    field the run produced (tau, fit accuracy, tie rate) is still checked, and
+    the test fails if the schema changes so that nothing gets checked;
+  - `test_config_echo_nulls_are_only_unfitted_thresholds` -- a null in the config
+    echo must be one of a known allowlist of unfitted parameters; any other null
+    fails.
+
+The test catching this is the intended behaviour, not a nuisance.
