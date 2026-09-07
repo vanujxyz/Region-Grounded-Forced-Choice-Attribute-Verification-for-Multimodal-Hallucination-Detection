@@ -846,3 +846,102 @@ count is non-zero, so the cell can never silently degenerate into Cell D.
 
 **Stakes, per the owner:** this is the strongest single result in the paper if it
 holds, and the most important limitation if it does not.
+
+### D-033 — matched-subset comparison for D-ext
+
+**Written before any D-ext result existed.**
+
+Cell D-ext covers 92.57% of questions, and coverage is uneven: **state 94.79%,
+action 79.29%**. So D-ext and Cell D are **not scored on the same question set**,
+and a raw D-ext-vs-D comparison would confound the method with the subset.
+
+Worse, the gap is concentrated exactly where Cell D is strongest — action, where
+Cell D scored 1.0000 at limit 100. If the unmapped action questions are the hard
+ones, D-ext looks better than it is; if they are the easy ones, it looks worse.
+Either way the naive comparison is uninterpretable.
+
+**Reporting requirement.** Three numbers, never fewer:
+
+1. **Cell D on all pairs** — the headline Cell D result.
+2. **Cell D restricted to the D-ext-covered subset** — the like-for-like control.
+3. **D-ext on the covered subset** — the external-competitor result.
+
+Comparison (2) vs (3) is the only fair one; (1) vs (2) shows how much of any
+difference is the subset rather than the method. **State and action are broken out
+separately**, since the coverage gap is concentrated in actions.
+
+A question enters the covered subset only if **its own** attribute is mapped.
+Because D-ext scores each question independently (D-034), one question of a pair
+can be covered while the other is not; the subset is defined per question, not
+per pair.
+
+### D-034 — D-ext gives up the pairing advantage entirely, and is strictly harder
+
+**Written before any D-ext result existed. This is the fact that answers the
+fairness objection.**
+
+| | Cell D | Cell D-ext |
+|---|---|---|
+| source of the competing attribute | AMBER's paired negative | external antonym map |
+| unit of decision | the **pair** | the **single question** |
+| can answer yes twice for a pair | **no — structurally impossible** | **yes** |
+| can answer no twice for a pair | **no — structurally impossible** | **yes** |
+| yes-rate constrained to the gold base rate | **yes, exactly** | **no** |
+| uses contrastive pair structure | yes | **none at all** |
+
+Cell D is structurally forced to emit **exactly one "yes" per pair**. Since AMBER's
+attribute pairs are exactly balanced, that constraint hands Cell D a correct
+answer distribution for free — the advantage examined in D-020/D-025.
+
+**Cell D-ext surrenders that advantage completely.** Each question is scored on
+its own against an external competitor; the two questions of a pair never see
+each other. D-ext can answer yes twice, no twice, or anything else, and nothing
+holds its yes-rate to the gold base rate.
+
+**Therefore D-ext operates under strictly harder conditions than Cell D**, on
+every axis: a worse-informed competitor, no pair structure, and no free prior. It
+has less information than Cell D **and** less than the Cell A baseline's fitted
+threshold, which at least got a parameter tuned on the evaluation data.
+
+**This is what answers the reviewer's fairness objection.** The objection is that
+the method exploits pair structure the baseline cannot access. D-ext removes the
+pair structure entirely. So:
+
+- **If D-ext still beats Cell A**, the objection fails — the gain does not depend
+  on contrastive pair structure, and forced choice against *any* plausible
+  competing attribute is what does the work.
+- **If D-ext collapses to baseline**, the objection stands — the method needs the
+  dataset's own contrast, and that is a real and reportable limitation of the
+  method, not of the experiment.
+
+Both outcomes are informative, and the prediction is recorded here **before the
+number exists** so neither can be reframed afterwards.
+
+One asymmetry that runs the *other* way, stated for completeness: the antonym map
+was written by the same author as the method, so a favourable map is a possible
+source of bias. Three things bound it — the map was committed before any result
+(D-032), it disagrees with AMBER's negative on 44.1% of pairs, and its
+construction rule and weakest category (colours) are stated in the file itself.
+
+### D-035 — pre-commit hook, because remembering did not work
+
+Shell chaining masked a pytest exit code **twice** in this project:
+
+    pytest -q | tail -2 && git commit ...
+
+takes `tail`'s status, not pytest's, so two commits landed with a failing suite
+(`d25c312`, and the D-029..D-032 decisions commit). Both were caught and fixed
+within minutes, but only by luck.
+
+`scripts/pre-commit` now runs ruff and the full suite and **refuses the commit**
+on any failure. `make install-hooks` installs it; `make check` runs the same
+thing manually. A `Makefile` replaces the ad-hoc chains, and every target returns
+a real exit code.
+
+**Verified by deliberate failure**: a temporary always-failing test was added and
+a commit attempted. The commit was refused with `COMMIT REFUSED: the test suite
+failed (exit 1)`, exit status 1, and HEAD unchanged. The temporary test was then
+removed.
+
+`git commit --no-verify` still bypasses the hook; the rule is that doing so
+requires stating the reason in the commit message.

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Refuse the commit if lint or the test suite fails.
+#
+# Written because shell chaining masked a pytest exit code twice:
+#   pytest -q | tail -2 && git commit ...
+# takes tail's exit status, not pytest's, so two commits landed with tests
+# failing. This removes the need to remember.
+#
+# Install with:  make install-hooks
+# Bypass (only with a stated reason):  git commit --no-verify
+
+set -uo pipefail
+
+PY="${CAPSTONE_PYTHON:-$HOME/anaconda3/envs/capstone/python.exe}"
+if [ ! -x "$PY" ]; then
+    PY="$(command -v python)"
+fi
+
+export HF_HOME="${HF_HOME:-C:\\hf}"
+
+echo "pre-commit: ruff ..."
+"$PY" -m ruff check src/ tests/ reproduce.py
+RUFF=$?
+if [ $RUFF -ne 0 ]; then
+    echo ""
+    echo "COMMIT REFUSED: ruff reported problems (exit $RUFF)."
+    exit 1
+fi
+
+echo "pre-commit: pytest ..."
+"$PY" -m pytest -q
+PYTEST=$?
+if [ $PYTEST -ne 0 ]; then
+    echo ""
+    echo "COMMIT REFUSED: the test suite failed (exit $PYTEST)."
+    echo "Fix the failure, or commit with --no-verify and say why in the message."
+    exit 1
+fi
+
+echo "pre-commit: OK"
+exit 0
