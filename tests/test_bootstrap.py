@@ -97,3 +97,64 @@ def test_paired_difference_requires_matching_images():
 def test_records_without_image_raise():
     with pytest.raises(ValueError, match="image"):
         bootstrap_metric([{"id": 1, "pred": "yes", "gold": "yes"}], n_resamples=10)
+
+
+# --------------------------------------------------------------------------
+# The vectorised accuracy fast path must be EXACTLY the generic path.
+# --------------------------------------------------------------------------
+def _generic(records):
+    """Force the generic code path by hiding the identity of `accuracy`."""
+    from src.eval.metrics import accuracy as _acc
+
+    return _acc(records)
+
+
+def test_fast_path_matches_generic_on_random_cases():
+    """200 random datasets; fast and generic bootstraps must agree bit for bit.
+
+    The fast path exists only for speed: at full dev the generic path rebuilt
+    ~650M record dicts and took over half an hour. It must therefore be provably
+    the same computation, not merely a close one.
+    """
+    import random as _r
+
+    rng = _r.Random(20260907)
+    for case in range(200):
+        n_img = rng.randint(1, 12)
+        recs, i = [], 0
+        for im in range(n_img):
+            for _ in range(rng.randint(1, 5)):
+                recs.append({
+                    "id": i,
+                    "image": f"AMBER_{im}.jpg",
+                    "pred": rng.choice(["yes", "no"]),
+                    "gold": rng.choice(["yes", "no"]),
+                })
+                i += 1
+        fast = bootstrap_metric(recs, n_resamples=200)
+        gen = bootstrap_metric(recs, statistic=_generic, n_resamples=200)
+        for key in ("point", "mean", "ci_low", "ci_high", "n_images"):
+            assert fast[key] == gen[key], (
+                f"case {case}: fast[{key}]={fast[key]} != generic[{key}]={gen[key]}"
+            )
+
+
+def test_fast_paired_difference_matches_generic():
+    import random as _r
+
+    rng = _r.Random(20260907)
+    for case in range(100):
+        n_img = rng.randint(2, 10)
+        a, b, i = [], [], 0
+        for im in range(n_img):
+            for _ in range(rng.randint(1, 4)):
+                gold = rng.choice(["yes", "no"])
+                a.append({"id": i, "image": f"AMBER_{im}.jpg",
+                          "pred": rng.choice(["yes", "no"]), "gold": gold})
+                b.append({"id": i, "image": f"AMBER_{im}.jpg",
+                          "pred": rng.choice(["yes", "no"]), "gold": gold})
+                i += 1
+        fast = bootstrap_paired_difference(a, b, n_resamples=200)
+        gen = bootstrap_paired_difference(a, b, statistic=_generic, n_resamples=200)
+        for key in ("point", "mean", "ci_low", "ci_high", "excludes_zero"):
+            assert fast[key] == gen[key], f"case {case}: {key} differs"

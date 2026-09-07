@@ -945,3 +945,152 @@ removed.
 
 `git commit --no-verify` still bypasses the hook; the rule is that doing so
 requires stating the reason in the commit message.
+
+### D-036 — bootstrap fast path (exact, not an approximation)
+
+The generic bootstrap rebuilt every resampled record as a dict. At full dev that
+is 10,000 resamples x ~3,858 records x 17 bootstrap calls — roughly 650 million
+dict constructions. The first full-dev table build ran **over 30 minutes without
+finishing** and was killed.
+
+For accuracy the computation has an exact closed form over image buckets:
+
+    accuracy(resample) = sum(correct over drawn buckets) / sum(size of drawn buckets)
+
+so only two integers per image are needed. `_accuracy_fast` computes this with
+numpy using **the same resample index matrix** as the generic path, so the
+numbers are identical, not merely close.
+
+**Verified, not assumed.** On the limit-100 Cell A and Cell D data, fast and
+generic agree to every printed digit on mean, ci_low and ci_high, and on the
+paired difference D − A (point, mean, ci_low, ci_high, excludes_zero all equal).
+Two permanent tests were added: 200 random datasets for the single-arm bootstrap
+and 100 for the paired difference, asserting exact equality field by field. The
+generic path is retained and is still used for any statistic other than accuracy.
+
+Table build time: **over 30 minutes (killed) → 4.6 seconds.** This matters again
+at M5, when the test-split bootstrap runs.
+
+### D-037 — M3 full dev results
+
+1,929 pairs / **3,858 questions**, 661 distinct triples, 696 images. Every cell
+run once. Fallback rate **0.0337** (1,864 of 1,929 regions found), down from
+0.05 on the 100-pair slice.
+
+|  | threshold | forced choice |
+|---|---|---|
+| **whole image** | A **0.5829** | B **0.7688** |
+| **cropped region** | C **0.5980** | D **0.8061** |
+
+Controls: A' **0.5770**, C' **0.5905**, position-only **1.0000** (artifact).
+Both base-rate cells realised exactly 1,929 predicted-yes with zero ties.
+
+| contrast | isolates | delta | 95% CI | |
+|---|---|---|---|---|
+| C − A | region grounding alone | +0.0150 | [+0.0023, +0.0278] | **excludes zero** |
+| C' − A' | region grounding, base-rate matched | +0.0135 | [+0.0021, +0.0248] | **excludes zero** |
+| B − A | forced choice alone | +0.1858 | [+0.1679, +0.2036] | excludes zero |
+| B − A' | forced choice, net of base rate | +0.1918 | [+0.1744, +0.2093] | excludes zero |
+| D − C | forced choice given cropping | +0.2081 | [+0.1908, +0.2249] | excludes zero |
+| D − C' | forced choice given cropping, net | +0.2157 | [+0.1985, +0.2323] | excludes zero |
+| D − B | cropping given forced choice | +0.0373 | [+0.0217, +0.0529] | excludes zero |
+| A' − A | cost of base-rate matching | −0.0060 | [−0.0121, +0.0003] | includes zero |
+| C' − C | cost of base-rate matching | −0.0075 | [−0.0183, +0.0032] | includes zero |
+| **D − A** | **headline** | **+0.2232** | **[+0.2057, +0.2405]** | **excludes zero** |
+
+Interaction (D−A) − (B−A) − (C−A) = **+0.0223** (was +0.0600 at limit 100).
+
+**The headline is stable**: +0.2300 at limit 100, +0.2232 on 19x more data.
+
+### D-038 — D-030 REVISED: region grounding alone is small but detectable
+
+**D-030 said region grounding "contributes nothing measurable". On the full dev
+set that statement is too strong and is hereby corrected.**
+
+| | C − A | 95% CI | |
+|---|---|---|---|
+| limit 100 (200 questions, 33 images) | +0.0100 | [−0.0490, +0.0680] | includes zero |
+| **full dev (3,858 questions, 696 images)** | **+0.0150** | **[+0.0023, +0.0278]** | **excludes zero** |
+
+The point estimate barely moved (+0.010 → +0.015). What changed is the interval:
+19x more data and 21x more bootstrap units narrowed the CI until it cleared zero.
+The base-rate-matched control agrees (C' − A' = +0.0135, [+0.0021, +0.0248]).
+
+**What this does and does not change.**
+
+- **Corrected:** "region grounding alone contributes nothing measurable" is
+  withdrawn. It contributes a small, statistically detectable **+1.5 points**.
+- **Unchanged:** the project's original premise — that region grounding is the
+  **primary** mechanism — remains unsupported. Forced choice is worth +0.1858,
+  more than **twelve times** larger. An effect being non-zero is not the same as
+  it being the mechanism.
+- **Unchanged:** the contribution is still the ablation itself, and the
+  superadditive interaction (+0.0223) is still real.
+- Also weaker at scale: D − B fell from +0.0700 to +0.0373, and the interaction
+  from +0.0600 to +0.0223 — both still excluding zero.
+
+This is recorded exactly as D-030 required: **a change in evidence, not a
+vindication of the framing.** No method, threshold or constant was altered. The
+tuning log remains empty. `docs/prd_section2_draft.md` asserts region grounding
+"does nothing measurable" and **must be revised before use** — flagged, not
+rewritten, pending owner decision.
+
+### D-039 — Cell D-ext result: the fairness objection FAILS
+
+Run once at limit 100, then once on full dev. Map and code were committed before
+either (D-032).
+
+**Full dev**, 3,547 covered questions of 3,858 (**coverage 0.9194**):
+
+| | ALL | state | action |
+|---|---|---|---|
+| coverage | 3547/3858 = 0.9194 | 3107/3300 = 0.9415 | 440/558 = **0.7885** |
+| D on all pairs | 0.8061 | 0.7933 | 0.8817 |
+| D on covered subset | 0.8103 | 0.7998 | 0.8841 |
+| **D-ext on covered subset** | **0.7621** | **0.7538** | **0.8205** |
+| A on covered subset | 0.5794 | 0.5806 | 0.5705 |
+| **D-ext − A (covered)** | **+0.1827** [+0.1649, +0.2002] | +0.1732 [+0.1543, +0.1923] | **+0.2500** [+0.2037, +0.2949] |
+| D-ext − D (covered) | −0.0482 [−0.0589, −0.0377] | −0.0460 [−0.0573, −0.0347] | −0.0636 [−0.0962, −0.0320] |
+
+All six intervals exclude zero.
+
+**Conclusion, against the prediction registered in D-034.** D-034 stated in
+advance: if D-ext still beats Cell A the objection fails; if it collapses to
+baseline the objection stands. **D-ext beats Cell A by +0.1827 with a CI far from
+zero.** The objection fails: the gain does not depend on contrastive pair
+structure supplied by the dataset. Forced choice against *any* plausible
+competing attribute is what does the work.
+
+**The price of fairness is +0.0482.** D-ext trails Cell D by that much — the
+measured cost of surrendering the pairing advantage, exactly as D-034 predicted
+it would. Cell D remains the better *system*; D-ext is the better *evidence*.
+
+**D-034's asymmetry confirmed empirically.** D-ext predicted 1,907 "yes" against
+1,763 gold, so it is genuinely unconstrained; on the limit-100 covered subset it
+answered yes twice on 15 of 89 complete pairs and no twice on 0. Cell D is
+structurally incapable of either.
+
+**Integrity audit of the D-ext records** (limit-100 file, all 186 records):
+- records not sourced from the external map: **0**
+- records where `competitor_attr != antonyms[attr]`: **0**
+- competitor differed from AMBER's negative on **51.1%** of records
+
+**The hardest slice.** Splitting D-ext by whether its competitor coincided with
+the dataset's negative:
+
+| slice | n | accuracy |
+|---|---|---|
+| competitor **differs** from dataset negative | 95 | **0.7474** |
+| competitor coincides | 91 | 0.8571 |
+
+Even on the genuinely-external half, D-ext (0.7474) beats Cell A on the same
+subset (0.6344). The result does not rest on the cases where the map happened to
+agree with AMBER.
+
+**The honest caveat.** Action coverage is only 0.7885, so 118 of 558 action
+questions are unscored by D-ext, and the unmapped items are systematically the
+opposite-less ones (`swim`, `jump`, `surf`) plus scene phrases (`calm waters`,
+`rolling waves`). D-033's matched-subset design controls the comparison, but it
+cannot say how D-ext would fare on questions no antonym map can serve. That is a
+limitation of the *method as deployed without a dataset-supplied contrast*, and
+it belongs in the paper.

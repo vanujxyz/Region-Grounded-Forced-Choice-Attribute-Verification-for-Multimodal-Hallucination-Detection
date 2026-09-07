@@ -1,6 +1,18 @@
 # DRAFT — proposed replacement for PRD §2 "The one contribution"
 
-**Status: DRAFT. `PRD.md` has NOT been modified.** This is for the M2 review.
+**Status: DRAFT, and now PARTLY SUPERSEDED. `PRD.md` has NOT been modified.**
+
+> **STOP — do not use this text as written.** It was drafted against the
+> 100-pair slice and asserts that region grounding alone "does nothing
+> measurable". On the full dev set that claim is **false**: C − A = +0.0150 with
+> a 95% CI of [+0.0023, +0.0278], which **excludes zero** (D-038). The effect is
+> small — twelve times smaller than forced choice — but it is detectable, and
+> the wording must change before this paragraph is used anywhere.
+>
+> What survives: forced choice dominates, region grounding is not the primary
+> mechanism, and the contribution is the ablation plus the interaction. What
+> must be rewritten: every phrase asserting a null effect for cropping.
+> Pending owner decision.
 
 **Why a rewrite is needed.** PRD §2 currently presents the method as "two
 independent changes", and PRD §5 says the 2×2 exists so "a reviewer cannot ask

@@ -26,6 +26,32 @@ def _by_image(records: Iterable[Record]) -> dict[str, list[Record]]:
     return out
 
 
+def _accuracy_fast(
+    buckets: list[list[Record]], idx: np.ndarray
+) -> np.ndarray:
+    """Exact vectorised accuracy for every resample.
+
+    The generic path rebuilds each resampled record list and calls the statistic
+    on it. For accuracy that is wasteful and exactly equivalent: the accuracy of
+    a concatenation of image buckets is
+
+        sum(correct over drawn buckets) / sum(size of drawn buckets)
+
+    so only two per-image integers are needed. Uses the SAME resample index
+    matrix as the generic path, so the numbers are bit-identical -- asserted in
+    tests/test_bootstrap.py against the generic implementation.
+    """
+    correct = np.array(
+        [sum(1 for r in b if r["pred"] == r["gold"]) for b in buckets], dtype=np.int64
+    )
+    total = np.array([len(b) for b in buckets], dtype=np.int64)
+    num = correct[idx].sum(axis=1)
+    den = total[idx].sum(axis=1)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        out = np.where(den > 0, num / np.maximum(den, 1), np.nan)
+    return out[~np.isnan(out)]
+
+
 def _resample_indices(n_images: int, n_resamples: int, seed: int) -> np.ndarray:
     rng = np.random.default_rng(seed)
     return rng.integers(0, n_images, size=(n_resamples, n_images))
@@ -47,16 +73,19 @@ def bootstrap_metric(
     buckets = [grouped[im] for im in images]
     idx = _resample_indices(len(images), n_resamples, seed)
 
-    values: list[float] = []
-    for row in idx:
-        sample: list[Record] = []
-        for j, b in enumerate(row):
-            # Re-key duplicated draws so the id-uniqueness check still holds.
-            for r in buckets[b]:
-                sample.append({**r, "id": (r["id"], j)})
-        v = statistic(sample)
-        if v != NOT_COMPUTED:
-            values.append(float(v))
+    if statistic is accuracy:
+        values = list(_accuracy_fast(buckets, idx))
+    else:
+        values = []
+        for row in idx:
+            sample: list[Record] = []
+            for j, b in enumerate(row):
+                # Re-key duplicated draws so the id-uniqueness check still holds.
+                for r in buckets[b]:
+                    sample.append({**r, "id": (r["id"], j)})
+            v = statistic(sample)
+            if v != NOT_COMPUTED:
+                values.append(float(v))
 
     if not values:
         return {"point": NOT_COMPUTED, "mean": NOT_COMPUTED, "ci_low": NOT_COMPUTED,
@@ -99,19 +128,25 @@ def bootstrap_paired_difference(
                 "n_resamples": n_resamples, "n_images": 0}
 
     idx = _resample_indices(len(images), n_resamples, seed)
-    diffs: list[float] = []
-    for row in idx:
-        sa: list[Record] = []
-        sb: list[Record] = []
-        for j, b in enumerate(row):
-            im = images[b]
-            for r in ga[im]:
-                sa.append({**r, "id": (r["id"], j)})
-            for r in gb[im]:
-                sb.append({**r, "id": (r["id"], j)})
-        va, vb = statistic(sa), statistic(sb)
-        if va != NOT_COMPUTED and vb != NOT_COMPUTED:
-            diffs.append(float(vb) - float(va))
+
+    if statistic is accuracy:
+        va_arr = _accuracy_fast([ga[im] for im in images], idx)
+        vb_arr = _accuracy_fast([gb[im] for im in images], idx)
+        diffs = list(vb_arr - va_arr)
+    else:
+        diffs = []
+        for row in idx:
+            sa: list[Record] = []
+            sb: list[Record] = []
+            for j, b in enumerate(row):
+                im = images[b]
+                for r in ga[im]:
+                    sa.append({**r, "id": (r["id"], j)})
+                for r in gb[im]:
+                    sb.append({**r, "id": (r["id"], j)})
+            va, vb = statistic(sa), statistic(sb)
+            if va != NOT_COMPUTED and vb != NOT_COMPUTED:
+                diffs.append(float(vb) - float(va))
 
     if not diffs:
         return {"point": NOT_COMPUTED, "mean": NOT_COMPUTED, "ci_low": NOT_COMPUTED,
