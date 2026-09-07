@@ -201,7 +201,9 @@ def _qtype_map() -> dict[int, str]:
     return {q.id: q.qtype for q in load_questions()}
 
 
-def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> dict:
+def run_attribute_cell(
+    cell: str, split: str, limit: int | None, cfg: dict, no_cache: bool = False
+) -> dict:
     """Run one attribute cell end to end. Returns records + diagnostics."""
     from PIL import Image
 
@@ -229,27 +231,54 @@ def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> d
     # ---- Stage 1: detection (only for crop cells). Freed before stage 2. ----
     crops: dict[str, dict] = {}
     det_scores: list[float] = []
+    cache_stats: Any = "NOT_APPLICABLE"
     if needs_crop:
-        from src.modules.detector import Detector
+        from src.modules.crop_cache import CropCache
 
-        with Detector(cfg) as det:
-            vram.mark("detector_loaded")
-            for p in pairs:
-                key = f"{p.image}|{p.obj}"
-                if key in crops:
-                    continue
-                img = Image.open(images_dir / p.image).convert("RGB")
-                c = det.crop_region(img, p.obj)
-                if c.detector_score is not None:
-                    det_scores.append(c.detector_score)
+        cache = CropCache(cfg, enabled=not no_cache)
+        wanted = []
+        for p in pairs:
+            key = f"{p.image}|{p.obj}"
+            if key in crops:
+                continue
+            hit = cache.get(p.image, p.obj)
+            if hit is not None:
                 crops[key] = {
-                    "box": c.box,
-                    "fell_back": c.fell_back,
-                    "detector_score": c.detector_score,
+                    "box": tuple(hit["box"]),
+                    "fell_back": hit["fell_back"],
+                    "detector_score": hit["detector_score"],
                 }
-                vram.sample()
-            vram.mark("detector_stage_end")
-        vram.mark("detector_freed")
+            else:
+                crops[key] = None  # placeholder; filled by the detector below
+                wanted.append(p)
+
+        if wanted:
+            from src.modules.detector import Detector
+
+            with Detector(cfg) as det:
+                vram.mark("detector_loaded")
+                for p in wanted:
+                    key = f"{p.image}|{p.obj}"
+                    img = Image.open(images_dir / p.image).convert("RGB")
+                    c = det.crop_region(img, p.obj)
+                    crops[key] = {
+                        "box": c.box,
+                        "fell_back": c.fell_back,
+                        "detector_score": c.detector_score,
+                    }
+                    cache.put(p.image, p.obj, c.box, c.fell_back, c.detector_score, c.detections)
+                    vram.sample()
+                vram.mark("detector_stage_end")
+            vram.mark("detector_freed")
+        cache.save()
+        cache_stats = cache.stats()
+
+        missing = [k for k, v in crops.items() if v is None]
+        if missing:
+            raise RuntimeError(f"{len(missing)} regions were never detected, e.g. {missing[:3]}")
+        det_scores = [
+            v["detector_score"] for v in crops.values() if v["detector_score"] is not None
+        ]
 
     # ---- Stage 2: scoring ----
     records: list[dict] = []
@@ -323,6 +352,7 @@ def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> d
         "detection_scores": summarise_scores(det_scores),
         "n_unique_regions": len(crops) if needs_crop else "NOT_APPLICABLE",
         "coverage": coverage.as_dict() if is_external else "NOT_APPLICABLE",
+        "crop_cache": cache_stats,
     }
 
 
@@ -388,6 +418,10 @@ def _report(name: str, result: dict) -> dict:
         print(f"  VRAM peak alloc  : {v['peak_allocated_gib']}")
         print(f"  VRAM peak used   : {v.get('peak_used_gib')} of {v.get('total_gib')} GiB")
         print(f"  VRAM per stage   : {v.get('per_stage_peak_allocated_gib')}")
+    if result.get("crop_cache") not in (None, "NOT_APPLICABLE"):
+        cc = result["crop_cache"]
+        print(f"  crop cache       : {cc['hits']} hits / {cc['misses']} misses "
+              f"(rate {cc['hit_rate']}), {cc['entries']} entries")
     if result.get("coverage") not in (None, "NOT_APPLICABLE"):
         c = result["coverage"]
         print(f"  antonym coverage : {c['questions_mapped']}/{c['questions_total']} "
@@ -422,6 +456,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--force-resplit", action="store_true")
     ap.add_argument("--out", default=None)
     ap.add_argument("--tables", action="store_true")
+    ap.add_argument("--no-cache", action="store_true",
+                    help="bypass the detection cache and re-run OWLv2 from scratch")
     args = ap.parse_args(argv)
 
     cfg = load_config(args.config)
@@ -448,7 +484,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         cells = [args.cell]
     for cell in cells:
-        result = run_attribute_cell(cell, args.split, args.limit, cfg)
+        result = run_attribute_cell(cell, args.split, args.limit, cfg, args.no_cache)
         run_id = f"attribute_{cell}_{args.split}_{stamp}"
         _report(f"CELL {cell}", result)
         write_jsonl(result["records"], out_dir / f"{run_id}.jsonl")
@@ -462,6 +498,7 @@ def main(argv: list[str] | None = None) -> int:
                 "detection_scores": result.get("detection_scores"),
                 "n_unique_regions": result.get("n_unique_regions"),
                 "coverage": result.get("coverage"),
+                "crop_cache": result.get("crop_cache"),
             },
         )
     return 0

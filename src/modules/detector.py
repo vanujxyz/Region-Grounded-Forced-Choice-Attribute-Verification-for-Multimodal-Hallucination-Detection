@@ -27,6 +27,7 @@ class Crop:
     box: tuple[float, float, float, float]
     fell_back: bool
     detector_score: float | None
+    detections: tuple = ()  # all post-NMS detections: (x1, y1, x2, y2, score)
 
 
 def _nms(dets: list[Detection], iou_threshold: float) -> list[Detection]:
@@ -125,13 +126,15 @@ class Detector:
     def crop_region(self, image: Image.Image, phrase: str) -> Crop:
         """Crop to the highest-scoring detection, padded; full image if none."""
         dets = self.detect(image, phrase)
+        packed = tuple((*d.box, d.score) for d in dets)
         if not dets:
             # TRD §6 fallback. Reported, never hidden.
             return Crop(image=image, box=(0.0, 0.0, float(image.width), float(image.height)),
-                        fell_back=True, detector_score=None)
+                        fell_back=True, detector_score=None, detections=())
         best = dets[0]
         box = pad_box(best.box, image.width, image.height, self.crop_cfg)
-        return Crop(image=image.crop(box), box=box, fell_back=False, detector_score=best.score)
+        return Crop(image=image.crop(box), box=box, fell_back=False,
+                    detector_score=best.score, detections=packed)
 
 
 def pad_box(box, img_w: int, img_h: int, crop_cfg: dict) -> tuple[int, int, int, int]:

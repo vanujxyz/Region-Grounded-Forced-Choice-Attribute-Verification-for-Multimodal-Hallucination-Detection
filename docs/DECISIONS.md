@@ -1094,3 +1094,108 @@ opposite-less ones (`swim`, `jump`, `surf`) plus scene phrases (`calm waters`,
 cannot say how D-ext would fare on questions no antonym map can serve. That is a
 limitation of the *method as deployed without a dataset-supplied contrast*, and
 it belongs in the paper.
+
+---
+
+## M4 — 2026-09-07
+
+### D-040 — Cell D-ext's coverage limitation is a scope condition, and is reportable as written
+
+Owner ruling: this goes in the paper's limitations section as a **scope condition
+of the method**, not as a defect to be engineered away.
+
+D-ext's antonym coverage on the dev split is **0.9194 overall, but only 0.7885
+for action** — 118 of 558 action questions are unscored. The unmapped items are
+not random. They are systematically the attributes with **no opposite**:
+
+- opposite-less verbs: `swim` (25), `jump` (14), `surf` (14), `raise` (9),
+  `ride a bike`, `dance`, `play soccer`, `drive`
+- scene phrases rather than attributes: `calm waters` (65), `rolling waves` (46),
+  `calm seas` (17), `rippling water` (16)
+
+**What the matched-subset design (D-033) can and cannot do.** It controls the
+*comparison* — D, D-ext and A are all scored on the identical covered subset, so
+the reported contrasts are clean. It **cannot** say how D-ext would perform on
+questions no antonym map can serve, because there is no D-ext prediction there
+to measure.
+
+**Stated for the paper:** forced choice requires a competing hypothesis. Where
+the dataset supplies one, Cell D applies. Where it does not, the method needs an
+external contrast, and for roughly a fifth of action attributes no such contrast
+exists in English. That is a genuine boundary on where this method applies, and
+it is reported as such rather than hidden by the subset.
+
+### D-041 — the framing, fixed before M4 dilutes it
+
+Recorded at the owner's instruction as the standing description of the result.
+Any later text — paper, slides, viva — uses this and not a looser paraphrase.
+
+> **Forced choice is the dominant mechanism (+0.1858). Region grounding is real
+> but roughly twelve times smaller (+0.0150). They interact positively
+> (+0.0223). The combination gives +0.2232.**
+
+Two prohibitions, both explicit:
+
+- **Do not describe cropping as null anywhere.** C − A = +0.0150 with a CI of
+  [+0.0023, +0.0278] that excludes zero. It is a small real effect.
+- **Do not describe cropping as the mechanism either.** It is an order of
+  magnitude below the question format, and the project's original premise that
+  it is primary remains unsupported.
+
+**The correction itself is reportable.** D-030 asserted region grounding
+"contributes nothing measurable" on the 100-pair slice; the full dev set
+falsified that, and D-038 withdrew it. Owner ruling: **the correction goes in the
+paper, not merely the corrected number.** A claim that was stated, tested at
+scale, and withdrawn in writing is evidence about the process that produced every
+other number in the paper. The sequence — pre-registered prediction, measurement,
+withdrawal — is part of the contribution.
+
+### D-042 — THREE question types have a CONSTANT gold label (blocking)
+
+Found while building `existence.py`. Verified directly against
+`data/amber/annotations.json`, not inferred:
+
+| qtype | n | yes | no | always-no | always-yes |
+|---|---|---|---|---|---|
+| discriminative-attribute-state | 4764 | 2382 | 2382 | 0.5000 | 0.5000 |
+| discriminative-attribute-action | 792 | 396 | 396 | 0.5000 | 0.5000 |
+| discriminative-attribute-number | 2072 | 1036 | 1036 | 0.5000 | 0.5000 |
+| **discriminative-hallucination** | **4924** | **0** | **4924** | **1.0000** | 0.0000 |
+| **discriminative-relation** | **975** | **975** | **0** | 0.0000 | **1.0000** |
+| **relation** | **689** | **0** | **689** | **1.0000** | 0.0000 |
+
+The three attribute types this project's contribution rests on are exactly
+balanced. **The three types belonging to the M4 scope modules are constant.**
+
+**Consequences.**
+
+1. **Existence accuracy is not interpretable.** A detector that answers "no" to
+   every one of the 4,924 questions scores **1.0000** without opening an image —
+   a second benchmark artifact of the same shape as D-009. Reporting existence
+   accuracy alone would be meaningless.
+
+2. **TRD §8's threshold fit is degenerate.** §8 says existence.threshold is
+   "fit on dev". Sweeping to maximise accuracy on all-`no` data drives the
+   threshold above every observed score, giving always-"no" and accuracy 1.0000.
+   **The specified fitting procedure cannot work on this data.**
+
+3. **What the questions actually measure.** AMBER's discriminative-hallucination
+   questions ask about objects that are *not* present — that is the point of the
+   benchmark. So the meaningful quantity is not accuracy but the **false-positive
+   (hallucination) rate**: how often the detector claims an absent object is
+   present. That is a real and reportable measure; it simply is not accuracy, and
+   it cannot be optimised by threshold sweeping without positives.
+
+4. **Relation is constant per qtype but not in aggregate.** `discriminative-relation`
+   is all-yes (975) and `relation` is all-no (689). Pooled, always-yes scores
+   975/1664 = 0.5859 and always-no 689/1664 = 0.4141. Any relation number must
+   state whether it pools the two types, because each alone is degenerate.
+
+**Status: BLOCKED pending owner decision.** `existence.py` and `relation.py` are
+written and their parsing is verified (EXIST_RE 4924/4924, corrected REL_RE
+1664/1664), but neither has been run, because the specified evaluation would
+produce a meaningless 1.0000 and a threshold fitted to infinity. No workaround
+has been applied and no number has been invented.
+
+`counting.py` is unaffected — number questions are exactly balanced (1036/1036) —
+and is ready to run.
