@@ -49,24 +49,46 @@ current framing asserts something the measurement does not support.
 >
 > We therefore do not claim two independent improvements. We claim that
 > **cropping to the named object is only useful when the decision rule is a
-> contrast between competing attributes**, and we give the mechanism: a crop
-> removes the surrounding context that a thresholded absolute score depends on
-> for calibration, so cropping alone trades one failure mode for another, while
-> a forced choice between two attributes is scale-free and keeps only the
-> comparison that matters. The measured superadditivity is the evidence for this
-> account, and isolating it is what the 2×2 in §5 is for.
+> contrast between competing attributes.** The measured superadditivity is the
+> evidence for that claim, and isolating it is what the 2×2 in §5 is for.
 >
-> Two controls support the claim rather than decorate it. First, forced choice
-> emits exactly one "yes" per contrastive pair, and AMBER's attribute pairs are
-> exactly balanced, so forced choice is handed a correct base rate for free. We
-> therefore report threshold cells A′ and C′ whose threshold is chosen to match
-> that base rate instead of to maximise accuracy. Giving the baseline the prior
-> does not close the gap — it widens it (forced choice net of base-rate
-> knowledge: +0.19 whole-image, +0.25 cropped). The advantage is not the prior.
-> Second, AMBER orders every attribute pair so the true attribute holds the
-> lower question id, which makes a position-only detector that never opens an
-> image score 100%. We report that baseline explicitly as a benchmark artifact
-> and confirm by permutation that no cell in our system reads it.
+> *Hypothesis (not measured).* We offer, as an untested explanation only, that a
+> crop removes the surrounding context a thresholded absolute score relies on for
+> calibration — so cropping alone trades one failure mode for another — whereas a
+> forced choice between two attributes is scale-free and keeps only the
+> comparison that matters. This is consistent with Cell C's recall collapsing to
+> 0.44 and with base-rate matching failing to rescue it, but **no experiment in
+> this work isolates the mechanism, and we do not claim it as a finding.**
+>
+> Two controls support the claim rather than decorate it.
+>
+> **First, the base rate.** Forced choice emits exactly one "yes" per contrastive
+> pair, and AMBER's attribute pairs are exactly balanced, so it is handed a
+> correct base rate for free. We therefore report threshold cells A′ and C′ whose
+> threshold is chosen to match that base rate instead of to maximise accuracy.
+> Giving the baseline the prior does not close the gap — it widens it. Quoting
+> both the raw and the base-rate-matched contrast, forced choice is worth
+> (+0.16, +0.19) on the whole image and (+0.22, +0.25) on the crop.
+>
+> **The two constraints are not the same constraint, and this is the point.**
+> A′ and C′ impose a *global* base rate: 100 "yes" answers across the evaluation
+> set as a whole. Forced choice imposes a *pairwise* constraint: exactly one
+> "yes" within each contrastive pair. The second is strictly stronger, and it is
+> not available to a thresholding rule at all — a single threshold applied to
+> independent scores cannot enforce a per-pair condition, because it has no
+> representation of the pair. To give a threshold cell the pairwise constraint,
+> one would have to compare the two options against each other and take the
+> better, which *is* forced choice. The remaining margin after A′/C′ is therefore
+> not an unremoved confound awaiting a better control. **The pairwise constraint
+> is the contribution**, and A′/C′ establish that it is doing work beyond
+> supplying a correct global prior, which is the only part of it a threshold rule
+> could have borrowed.
+>
+> **Second, the position artifact.** AMBER orders every attribute pair so the
+> true attribute holds the lower question id, which makes a position-only
+> detector that never opens an image score 100%. We report that baseline
+> explicitly as a benchmark artifact and confirm by permutation that no cell in
+> our system reads it.
 
 ---
 
@@ -83,18 +105,22 @@ current framing asserts something the measurement does not support.
 | forced choice net of base rate, cropped | +0.2500 | [+0.1700, +0.3182] | D − C′ |
 | headline | +0.2300 | [+0.1515, +0.3021] | D − A |
 
+**Reporting rule (owner instruction):** the raw and base-rate-matched contrasts
+are always quoted as a pair — **(+0.16, +0.19)** and **(+0.22, +0.25)** — never
+one alone. A′/C′ are a strictly harder baseline than A/C, so B−A′ and D−C′ are
+upper bounds on the forced-choice effect, not neutral estimates.
+
 ## Caveats the review must weigh before this text is adopted
 
 1. **Every number above is 100 dev pairs — 33 bootstrap units, 62 distinct
    triples.** The signs are probably stable; the magnitudes are not. If M3's full
    dev run moves region grounding away from zero, this paragraph needs rewriting
    again, in the other direction.
-2. **The mechanism sentence** ("a crop removes the surrounding context that a
-   thresholded absolute score depends on for calibration") is an *explanation I
-   have proposed, not a result I have measured.* It is consistent with Cell C's
-   collapsed recall (0.44) and with base-rate matching not rescuing it, but no
-   experiment here isolates it. Either mark it as a hypothesis in the paper or
-   design a test for it.
+2. **The mechanism sentence is a labelled hypothesis, by decision.** It is set
+   off in its own paragraph, opens with "*Hypothesis (not measured)*", and ends
+   with an explicit disclaimer. Owner ruling: keep it as a hypothesis, do **not**
+   design an experiment for it — out of TRD scope and it does not earn its cost.
+   If it is ever promoted to a finding, it needs an experiment first.
 3. **PRD §3 (non-goals) also needs a look.** It currently disclaims region
    grounding as a contribution on the grounds that ESREAL did it. That disclaimer
    now sits oddly beside a finding that region grounding alone does nothing —

@@ -629,3 +629,77 @@ the magnitudes are not stable; the proposed *mechanism* for why cropping needs
 forced choice is a hypothesis I have not measured; and PRD §3's non-goals need a
 second look, since disclaiming region grounding as prior art sits oddly beside a
 finding that it does nothing on its own.
+
+### D-025 — D-020 was the owner's hypothesis, and it was falsified
+
+Recorded explicitly so the outcome is not lost.
+
+**Origin.** The hypothesis was raised by the project owner: that part of Cells
+B/D's margin was forced choice inheriting AMBER's exactly balanced attribute
+pairs as a free prior, rather than binding attributes better. It was a reasonable
+concern and exactly the kind a reviewer raises.
+
+**Test.** Cells A′ and C′ (D-022): identical to A and C, but tau chosen to match
+the known base rate rather than to maximise accuracy — handing the threshold
+cells the one piece of structural information forced choice was getting free.
+
+**Outcome: FALSIFIED.** Giving the baseline the correct base rate did not shrink
+the gap; it *widened* it, in both region conditions:
+
+| | raw | base-rate matched |
+|---|---|---|
+| forced choice, whole image | +0.1600 | **+0.1900** |
+| forced choice, cropped | +0.2200 | **+0.2500** |
+
+Matching the base rate *costs* the threshold cells accuracy (−0.03 each), because
+their accuracy-maximising tau was deliberately unbalanced (A predicted yes
+136/200, C 60/200). The prior was not the source of the advantage.
+
+**Reporting rule, owner instruction:** the raw and base-rate-matched contrasts
+are always quoted **as a pair** — (+0.16, +0.19) and (+0.22, +0.25) — never one
+alone. A′/C′ are a strictly harder baseline than A/C, so B−A′ and D−C′ are upper
+bounds on the forced-choice effect, not neutral estimates.
+
+**Why the remaining margin is not an unremoved confound** (added to the §2 draft
+at the owner's direction): A′/C′ impose a *global* base rate (100 yes overall);
+forced choice imposes a *pairwise* constraint (one yes per pair). The pairwise
+constraint is strictly stronger and is **not available to a thresholding rule at
+all** — a single threshold on independent scores has no representation of the
+pair. Taking the pairwise constraint requires comparing the two options against
+each other, which *is* forced choice. **The pairwise constraint is the
+contribution**, and A′/C′ establish it does work beyond supplying a correct
+global prior, which is the only part a threshold rule could have borrowed.
+
+### D-026 — a mislabelled contrast, in prose only
+
+The owner flagged that `table1_comparison.csv` reported "B − D cropping given
+forced choice +0.0700", which should be "D − B".
+
+**The CSV was correct.** Every row reads `D minus B | +0.0700`, and all ten rows
+were verified against the raw results. **The inversion was in my report prose**,
+where I wrote "B − D" in a summary table. The artifact was right and the
+narration was wrong; the correction belongs to the report, not the file.
+
+Label generation happens in exactly one place, `f'{b} minus {a}'` paired with
+`bootstrap_paired_difference(R[a], R[b])`, which computes `b - a`. The pairing is
+correct and no other row was affected.
+
+**Guard added** (`tests/test_tables.py`, 7 tests). The load-bearing one recomputes
+each row: for a label "X minus Y" it asserts the reported `point` equals
+`accuracy(X) - accuracy(Y)` exactly. A sign check alone would not do — a negative
+value is perfectly legitimate, so only recomputing the stated difference
+distinguishes a real negative from a flipped label. Also guarded: labels parse,
+no table contains both "X minus Y" and its inverse, CIs bracket their point
+estimate, `excludes_zero` agrees with the CI, and the position-only row never
+appears without its ARTIFACT warning.
+
+**The guard was verified by injecting the exact inversion**: rewriting the row to
+"B minus D" makes the test fail with "reports +0.070000 but accuracy(B) −
+accuracy(D) = −0.070000. If these differ by exactly a sign, the label is
+inverted." Restoring the file makes all 7 pass.
+
+### D-027 — PRD §3 non-goals: no action, deferred to the review
+
+Owner ruling. PRD §3 disclaims region grounding as prior art (ESREAL), which
+reads oddly beside D-019's finding that region grounding alone does nothing
+measurable. Noted as a question for the review, not resolved here.
