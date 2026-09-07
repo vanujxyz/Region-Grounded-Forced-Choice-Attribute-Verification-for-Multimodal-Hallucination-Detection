@@ -21,9 +21,8 @@ paths:
 # TRD §6 — object localisation
 detector:
   model_id: google/owlv2-base-patch16-ensemble
-  # M1 MUST pin this to the real revision hash after the first download.
-  # Left null deliberately: a hash is never invented (PRD §8 rule 1).
-  revision: null
+  # Real hash, read from the HF Hub API at first download on 2026-09-07.
+  revision: cfd3195ba4ea9592eec887ded089f4c08eff231d
   prompt_template: "a photo of a {phrase}"
   threshold: 0.10        # tune on dev only
   nms_iou: 0.5
@@ -35,10 +34,16 @@ crop:
 # TRD §7 — attribute verification
 attribute:
   model_id: google/siglip-base-patch16-224
-  revision: null         # M1 MUST pin. See above.
+  # Real hash, read from the HF Hub API at first download on 2026-09-07.
+  revision: 7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed
   # Identical template in all four cells (TRD §7, §16).
   prompt_template: "a photo of a {attr} {obj}"
   confidence_k: 10.0     # sigmoid steepness for threshold cells
+  # TRD §7 says "siglip_score" without fixing a scale. SigLIP emits a raw
+  # logit; its sigmoid is ~1e-5 here, so tau is swept on the LOGIT scale.
+  # See D-011. Changing this changes what tau means.
+  score_scale: logit     # logit | sigmoid
+  device: cuda           # falls back to cpu automatically if unavailable
 
 existence:
   threshold: null        # fit on dev (TRD §8)

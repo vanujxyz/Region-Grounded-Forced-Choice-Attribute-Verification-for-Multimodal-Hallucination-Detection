@@ -254,3 +254,57 @@ chars). So `hf_cache` defaults to the relative `.hf_cache` (portable, correct on
 Kaggle/Colab) and the absolute Windows path is supplied through the `HF_HOME`
 environment variable, which `src/config.py` honours as an override. No absolute
 path is stored in the repository.
+
+### D-011 — the scale of `siglip_score` is unspecified in TRD §7
+
+TRD §7 writes `s = siglip_score(...)` and `"yes" if s >= tau` without fixing a
+scale. SigLIP emits a raw logit; on AMBER_1/sky the two options score
+`-14.81` and `-9.03`, whose sigmoids are `0.0000` and `0.0001`. Thresholding
+sigmoid values that small is numerically degenerate, so **tau is swept on the
+logit scale**. `attribute.score_scale: logit` in `configs/main.yaml`; setting it
+to `sigmoid` changes what tau means.
+
+**Consequence for the confidence formula.** TRD §7 gives threshold-cell
+confidence as `sigmoid(k * (score - tau))` with `k = 10.0`. On the logit scale a
+gap of one unit is already large, so `k = 10` saturates confidence to 0.0 or 1.0
+almost everywhere -- the first Cell A record has `confidence: 1.0`. The
+confidences are therefore near-binary and should not be read as calibrated. `k`
+is left at the specified `10.0`; **this is flagged, not changed.**
+
+### D-012 — fitting tau under `--limit`
+
+TRD §7 says tau is fitted on the dev split. With `--limit 100` the run both fits
+and evaluates tau on the same 200 questions, which is optimistically biased.
+
+The bias **favours Cell A and Cell C**, the threshold cells -- that is, it
+favours the *baseline* in the headline A-vs-D comparison. The comparison is
+therefore conservative with respect to the project's own hypothesis, which is the
+safe direction for the error to run. Recorded rather than corrected, because
+TRD §7 specifies fitting on dev and does not carve out the `--limit` case.
+
+At M3 (full dev run) the fit set is the whole dev split and the same question
+arises at a much smaller scale; if a held-out fitting protocol is wanted, it is a
+spec change and needs owner sign-off.
+
+### D-013 — transformers 5.16.1
+
+TRD §0 requires `transformers >= 4.45`; pip resolved **5.16.1**, a major version
+released after the TRD was written. It satisfies the constraint literally. Both
+required APIs were smoke-tested against the pinned revisions before use:
+`Owlv2Processor` / `Owlv2ForObjectDetection` with
+`post_process_grounded_object_detection`, and `AutoProcessor` / `AutoModel` with
+`logits_per_image`. Both work. Two undeclared transitive dependencies of the
+SigLIP tokenizer had to be installed: `sentencepiece` and `protobuf`; neither
+appears in TRD §0.
+
+Loading SigLIP emits two harmless config warnings from transformers v5
+(`bos_token_id` / `eos_token_id` outside the vocabulary). They come from the
+upstream checkpoint config, not from this code.
+
+### D-014 — HF_HOME quoting bug, caught and corrected
+
+`HF_HOME=C:\hf` unquoted in bash collapses to `C:hf`, which Windows resolves
+*relative to the current directory on drive C:*. The first OWLv2 download
+therefore wrote 594 MB into the project directory as `hf/`. The cache was moved
+to `C:\hf` and the stray directory removed; `.hf_cache/` is gitignored. Always
+quote it: `HF_HOME='C:\hf'`.
