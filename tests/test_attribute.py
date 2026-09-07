@@ -163,7 +163,7 @@ def test_base_rate_tau_reports_ties_rather_than_hiding_them():
     from src.modules.attribute import fit_tau_base_rate
 
     data = [(1.0, "yes"), (1.0, "yes"), (1.0, "no"), (0.0, "no")]
-    tau, info = fit_tau_base_rate(data)
+    _tau, info = fit_tau_base_rate(data)
     assert info["target_yes"] == 2
     assert info["realised_yes"] == 3  # three scores tie at tau
     assert info["ties_at_tau"] == 1
