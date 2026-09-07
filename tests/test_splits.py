@@ -5,7 +5,6 @@ without the env var.
 """
 
 import json
-import os
 
 import pytest
 

@@ -9,7 +9,8 @@ never as 0 or a placeholder (PRD §8 rule 1).
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 NOT_COMPUTED = "NOT_COMPUTED"
 

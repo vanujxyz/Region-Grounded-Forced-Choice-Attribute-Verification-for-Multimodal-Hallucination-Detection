@@ -111,7 +111,7 @@ def assert_images() -> None:
     if len(files) != N_IMAGES or len(matching) != N_IMAGES:
         raise AssertionError(
             f"{IMAGES_DIR} must contain exactly {N_IMAGES} files matching "
-            f"AMBER_(\d+).jpg; found {len(files)} files, {len(matching)} matching."
+            rf"AMBER_(\d+).jpg; found {len(files)} files, {len(matching)} matching."
         )
     indices = sorted(int(IMAGE_RE.match(f).group(1)) for f in matching)
     if indices != list(range(1, N_IMAGES + 1)):
