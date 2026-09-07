@@ -2,12 +2,21 @@
 seed: 20260907
 split: dev
 
+# All paths are RELATIVE to the repository root and resolved at runtime.
+# No absolute path appears anywhere in this file: the project must run
+# unchanged on Windows, Colab and Kaggle.
 paths:
   amber: data/amber
   images: data/images
   splits: data/splits/splits.json
+  results: results
   results_raw: results/raw
   results_tables: results/tables
+  demo_out: results/demo
+  # HuggingFace cache. Machine-specific overrides go in the HF_HOME environment
+  # variable, never here -- on this Windows host HF_HOME=C:\hf avoids the
+  # MAX_PATH failure recorded in D-005 (the repo dir name is 96 chars).
+  hf_cache: .hf_cache
 
 # TRD §6 — object localisation
 detector:

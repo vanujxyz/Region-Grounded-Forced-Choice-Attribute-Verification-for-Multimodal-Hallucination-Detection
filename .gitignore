@@ -9,3 +9,6 @@ data/images/
 data/amber_repo/
 
 # data/splits/splits.json is deliberately NOT ignored: it is frozen and tracked.
+
+# Local HF cache when HF_HOME is not set
+.hf_cache/

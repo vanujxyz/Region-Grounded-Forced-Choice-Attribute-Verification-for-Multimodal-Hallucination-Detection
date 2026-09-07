@@ -116,7 +116,7 @@ positive attribute first in **1156 of 2774 pairs (41.7%)**, not ~50%.
 **Owner's requested change:** evaluate each pair in both option orders and
 average the two score vectors before the argmax.
 
-**Status: RAISED, NOT IMPLEMENTED — awaiting owner decision.**
+**Status: RESOLVED — option (a). Owner accepted the analysis; averaging skipped.**
 
 The requested change is a mathematical no-op under the architecture TRD §7
 specifies. Cell B/D score each option independently:
@@ -147,7 +147,12 @@ Implemented now (the part that is real):
   - explicit tie detection: ties are counted and reported per run rather than
     resolved silently by list position.
 
-Deferred pending owner decision: the both-orders averaging.
+**Resolution (owner, option a):** the both-orders averaging is NOT implemented,
+because it is a no-op. Tie-counting and the order-invariance regression guard are
+kept. The 41.7% figure is recorded as a descriptive limitation only, and is not
+presented as a bias that was corrected.
+
+Superseded in importance by **D-009** below, of which this skew is a shadow.
 
 ### D-007 (owner's "D-003") — attribute pairs repeat; raw N overstates evidence
 
@@ -180,3 +185,72 @@ vocabulary. Effective sample size is materially smaller than N suggests.
 
 CUDA build installed from the cu124 index per owner instruction; `HF_HOME=C:\hf`
 to avoid the Windows MAX_PATH failure recorded in D-005.
+
+### D-009 — AMBER attribute pairs are systematically ordered by construction
+
+**Raised by the project owner; reproduced independently and found to be stronger
+than stated.**
+
+In **all 2,774** clean attribute pairs the true attribute has the **lower**
+question id. Zero exceptions:
+
+| subset | positive_id < negative_id | share |
+|---|---|---|
+| state  | 2378 / 2378 | 100.00% |
+| action |  396 /  396 | 100.00% |
+| **all**| **2774 / 2774** | **100.00%** |
+
+**Stronger than reported:** the id gap within a pair is *always exactly 1* — the
+set of distinct gaps is `[1]`. Pairs are strictly adjacent `(n, n+1)` with the
+true attribute at `n`. AMBER generates the correct attribute first.
+
+**Measured consequence:** a detector that never opens an image and simply answers
+"yes" to whichever question of a pair has the lower id scores **1.0000
+(5548/5548)**.
+
+**Three actions taken:**
+
+1. **Reported, not hidden.** `src/modules/position_baseline.py` implements the
+   exploit and emits records in the standard format, tagged
+   `benchmark_artifact: True` and `cell: "position-only"`. It becomes a labelled
+   row in Table 1 — "Position-only baseline (BENCHMARK ARTIFACT — exploits AMBER
+   pair id ordering; sees no image)" — so no reviewer discovers it independently.
+   It loads no model and opens no image, by construction.
+
+2. **Ordering may never derive from an id.** `tests/test_position_baseline.py`
+   asserts option order is invariant to id swapping and to extreme id
+   perturbation, that `AttrPair.options` mentions no id field (static check on
+   the property source), and — the real risk — that `_build_pairs` selects pair
+   polarity from the **gold answer**, never from an id comparison. That last one
+   must be a static check: because the artifact is 100%, "positive = truth is
+   yes" and "positive = lower id" are behaviourally indistinguishable on real
+   AMBER data, so no behavioural test can separate them.
+
+3. **Paper limitation.** AMBER's attribute pairs are systematically ordered by
+   construction. Any evaluation that consumes pairs in dataset order, or that
+   lets id ordering reach the model, inherits a free 100%. Reported alongside
+   D-007 (828 distinct triples) in the limitations section.
+
+**Note for M2 onward:** this makes the Cell A vs Cell D comparison the only
+meaningful signal. An implementation bug that leaks id order would produce a
+spectacular accuracy that means nothing. If any cell reports near-100%, suspect
+leakage before celebrating.
+
+### D-010 — configuration paths
+
+Owner instruction: the image directory, results directory and HF cache are single
+config values; no absolute paths anywhere, so the project can move to Kaggle if
+4 GB VRAM proves insufficient.
+
+`configs/main.yaml` now carries `paths:` with `amber`, `images`, `splits`,
+`results`, `results_raw`, `results_tables`, `demo_out` and `hf_cache`, all
+**relative to the repo root**. `src/config.py` resolves them at runtime;
+`src/data/loader.py` no longer hardcodes any path.
+
+**One tension, resolved deliberately.** `HF_HOME=C:\hf` is machine-specific and
+absolute, and exists to dodge the Windows MAX_PATH failure in D-005 — but a
+relative in-repo cache would reintroduce that failure (the repo dir name is 96
+chars). So `hf_cache` defaults to the relative `.hf_cache` (portable, correct on
+Kaggle/Colab) and the absolute Windows path is supplied through the `HF_HOME`
+environment variable, which `src/config.py` honours as an override. No absolute
+path is stored in the repository.

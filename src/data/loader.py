@@ -14,13 +14,18 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from src.config import ROOT as CONFIG_ROOT
+from src.config import paths
+
 # --------------------------------------------------------------------------
-# Paths.  The repository root is the parent of ``src/``.
+# Paths.  Every one comes from configs/main.yaml via src.config -- nothing is
+# hardcoded here, so the project relocates to Colab/Kaggle by config alone.
 # --------------------------------------------------------------------------
-ROOT = Path(__file__).resolve().parents[2]
-AMBER_DIR = ROOT / "data" / "amber"
-IMAGES_DIR = ROOT / "data" / "images"
-SPLITS_PATH = ROOT / "data" / "splits" / "splits.json"
+_PATHS = paths()
+ROOT = CONFIG_ROOT
+AMBER_DIR = _PATHS["amber"]
+IMAGES_DIR = _PATHS["images"]
+SPLITS_PATH = _PATHS["splits"]
 
 ANNOTATIONS_PATH = AMBER_DIR / "annotations.json"
 QUERY_ALL_PATH = AMBER_DIR / "query" / "query_all.json"
