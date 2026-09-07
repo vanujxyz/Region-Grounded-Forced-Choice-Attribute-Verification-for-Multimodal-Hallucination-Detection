@@ -201,7 +201,7 @@ def test_diag_cells_are_not_part_of_the_2x2():
 
     assert DIAG_CELLS == ("Ap", "Cp")
     assert set(DIAG_CELLS).isdisjoint(CELLS)
-    assert ALL_CELLS == ("A", "B", "C", "D", "Ap", "Cp")
+    assert ALL_CELLS == ("A", "B", "C", "D", "Ap", "Cp", "Dext")
 
 
 def test_diag_cells_route_like_their_parents():

@@ -24,13 +24,34 @@ COMPARISON = TABLES / "table1_comparison.csv"
 LABEL_RE = re.compile(r"^(?P<b>\S+) minus (?P<a>\S+)$")
 
 
-def _load_cell(cell: str):
-    """Most recent raw JSONL for a cell, or None if it was never run."""
-    hits = sorted(glob.glob(str(RAW / f"attribute_{cell}_dev_*.jsonl")))
-    if not hits:
+def _expected_n() -> int | None:
+    """The n the current tables were built from, per the ablation table."""
+    path = TABLES / "table1_ablation.csv"
+    if not path.exists():
         return None
-    with open(hits[-1], encoding="utf-8") as fh:
-        return [json.loads(line) for line in fh]
+    with path.open(encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh):
+            try:
+                return int(row["n"])
+            except (KeyError, ValueError):
+                continue
+    return None
+
+
+def _load_cell(cell: str, n: int | None = None):
+    """Raw JSONL for a cell, matching the run the tables were built from.
+
+    Selecting "the newest file" is wrong: a table built at limit 100 must be
+    checked against the limit-100 results, not against a later full-dev run that
+    happens to share the filename pattern. Match on record count, newest first.
+    """
+    hits = sorted(glob.glob(str(RAW / f"attribute_{cell}_dev_*.jsonl")), reverse=True)
+    for path in hits:
+        with open(path, encoding="utf-8") as fh:
+            recs = [json.loads(line) for line in fh]
+        if n is None or len(recs) == n:
+            return recs
+    return None
 
 
 def _rows():
@@ -54,10 +75,11 @@ def test_point_equals_the_difference_its_label_claims():
     value is perfectly legitimate, so only recomputing the stated difference
     distinguishes a real negative from a flipped label.
     """
+    n = _expected_n()
     checked = 0
     for row in _rows():
         m = LABEL_RE.match(row["comparison"])
-        rb, ra = _load_cell(m.group("b")), _load_cell(m.group("a"))
+        rb, ra = _load_cell(m.group("b"), n), _load_cell(m.group("a"), n)
         if rb is None or ra is None:
             continue
         expected = accuracy(rb) - accuracy(ra)
@@ -68,7 +90,10 @@ def test_point_equals_the_difference_its_label_claims():
             "If these differ by exactly a sign, the label is inverted."
         )
         checked += 1
-    assert checked > 0, "no comparison rows could be verified against raw results"
+    assert checked > 0, (
+        "no comparison rows could be verified against raw results; the tables may "
+        f"be stale relative to results/raw/ (expected n={n} per the ablation table)"
+    )
 
 
 def test_no_inverted_duplicate_rows():
@@ -110,7 +135,7 @@ def test_ablation_table_cells_are_known():
         pytest.skip("table1_ablation.csv not generated yet")
     with path.open(encoding="utf-8", newline="") as fh:
         rows = list(csv.DictReader(fh))
-    known = {"A", "B", "C", "D", "Ap", "Cp", "position-only"}
+    known = {"A", "B", "C", "D", "Ap", "Cp", "Dext", "position-only"}
     for row in rows:
         assert row["cell"] in known, f"unknown cell in ablation table: {row['cell']!r}"
 
