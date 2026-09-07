@@ -1,0 +1,128 @@
+{
+  "run_id": "attribute_Cp_dev_20260907T134820Z",
+  "git_commit": "246706e97d12146341bf2d7f23eb7d6826971406",
+  "timestamp_utc": "2026-09-07T13:49:44.202108+00:00",
+  "config_path": "configs\\main.yaml",
+  "config": {
+    "seed": 20260907,
+    "split": "dev",
+    "detector": {
+      "model_id": "google/owlv2-base-patch16-ensemble",
+      "revision": "cfd3195ba4ea9592eec887ded089f4c08eff231d",
+      "prompt_template": "a photo of a {phrase}",
+      "threshold": 0.1,
+      "nms_iou": 0.5
+    },
+    "crop": {
+      "padding": 0.1,
+      "min_size": 64
+    },
+    "attribute": {
+      "model_id": "google/siglip-base-patch16-224",
+      "revision": "7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed",
+      "prompt_template": "a photo of a {attr} {obj}",
+      "confidence_k": 10.0,
+      "score_scale": "logit",
+      "device": "cuda"
+    },
+    "existence": {
+      "threshold": null
+    },
+    "relation": {
+      "tau": null
+    },
+    "bootstrap": {
+      "n_resamples": 10000,
+      "seed": 20260907
+    },
+    "_config_path": "configs\\main.yaml"
+  },
+  "paths": {
+    "amber": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\data\\amber",
+    "images": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\data\\images",
+    "splits": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\data\\splits\\splits.json",
+    "results": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results",
+    "results_raw": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results\\raw",
+    "results_tables": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results\\tables",
+    "demo_out": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results\\demo",
+    "hf_cache": "C:\\hf"
+  },
+  "models": {
+    "detector": {
+      "id": "google/owlv2-base-patch16-ensemble",
+      "revision": "cfd3195ba4ea9592eec887ded089f4c08eff231d"
+    },
+    "attribute": {
+      "id": "google/siglip-base-patch16-224",
+      "revision": "7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed"
+    }
+  },
+  "seed": 20260907,
+  "split": "dev",
+  "limit": 100,
+  "cell": "Cp",
+  "module": "attribute",
+  "packages": {
+    "torch": "2.6.0+cu124",
+    "transformers": "5.16.1",
+    "numpy": "2.4.6",
+    "pillow": "12.3.0",
+    "pydantic": "2.13.5",
+    "spacy": "3.8.16"
+  },
+  "python": "3.11.16",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "tau": {
+    "tau": -7.690875053405762,
+    "selection": "base_rate_matched",
+    "target_yes": 100,
+    "realised_yes": 100,
+    "ties_at_tau": 0,
+    "fit_accuracy": 0.61,
+    "fit_n": 200,
+    "fit_split": "dev",
+    "fit_limit": 100,
+    "protocol": "fit-on-eval"
+  },
+  "ties": {
+    "tie_count": 0,
+    "comparisons": 0,
+    "tie_rate": "NOT_COMPUTED",
+    "examples": []
+  },
+  "n_pairs": 100,
+  "vram": {
+    "available": true,
+    "peak_allocated_gib": 0.7722878456115723,
+    "peak_used_gib": 1.654101561754942,
+    "min_free_gib": 2.345410156995058,
+    "total_gib": 3.99951171875,
+    "per_stage_peak_allocated_gib": {
+      "detector_loaded": 0.5776243209838867,
+      "detector_stage_end": 0.7611427307128906,
+      "detector_freed": 0.7611427307128906,
+      "scorer_stage_end": 0.7722878456115723
+    }
+  },
+  "detection_scores": {
+    "n": 95,
+    "min": 0.10989497601985931,
+    "p25": 0.2648560404777527,
+    "median": 0.44319871068000793,
+    "p75": 0.5956785082817078,
+    "max": 0.8280971050262451,
+    "mean": 0.4367638567560597,
+    "histogram": {
+      "[0.00,0.10)": 0,
+      "[0.10,0.15)": 6,
+      "[0.15,0.20)": 9,
+      "[0.20,0.30)": 13,
+      "[0.30,0.40)": 12,
+      "[0.40,0.50)": 19,
+      "[0.50,0.70)": 26,
+      "[0.70,1.01)": 10
+    }
+  },
+  "n_unique_regions": 100
+}

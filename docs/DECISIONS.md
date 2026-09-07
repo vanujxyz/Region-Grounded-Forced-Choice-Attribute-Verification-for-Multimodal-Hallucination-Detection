@@ -541,3 +541,91 @@ audit into an empirical falsification, which is cheap insurance on the project's
 central claim. Do **not** adopt it as the standing protocol for M3's full dev run:
 ~27 minutes for an outcome already known to be bit-identical, and reported
 accuracy must stay on real AMBER ids.
+
+### D-022 — Cells A' and C': the base-rate confound is REFUTED
+
+D-020 asked whether B/D's margin is really forced choice inheriting AMBER's
+exact pair balance for free. Cells A' and C' test it: identical to A and C, but
+tau chosen so predicted-yes matches the known base rate (100 of 200) rather than
+maximising accuracy.
+
+**Tau selection rule for A'/C'** (`fit_tau_base_rate`): sort the 200 scores
+descending, take tau as the `target_yes`-th largest, so exactly `target_yes`
+scores satisfy `score >= tau`. Ties can push the realised count above target; the
+realised count is reported, never assumed. `target_yes` defaults to the number of
+gold "yes" in the fit set. **Fit-on-eval, exactly like every other dev tau
+(D-012)** -- A' is *told* the base rate instead of being tuned for accuracy. It
+exchanges one oracle for another; that is what makes it the right control.
+
+Realised: A' tau -11.4144, C' tau -7.6909, both realised_yes = 100 exactly,
+ties_at_tau = 0.
+
+| cell | accuracy | predicted yes | tp / fp / fn / tn |
+|---|---|---|---|
+| A | 0.6300 | 136 | 81 / 55 / 19 / 45 |
+| A' | **0.6000** | **100** | 60 / 40 / 40 / 60 |
+| C | 0.6400 | 60 | 44 / 16 / 56 / 84 |
+| C' | **0.6100** | **100** | 61 / 39 / 39 / 61 |
+| B | 0.7900 | 100 | 79 / 21 / 21 / 79 |
+| D | 0.8600 | 100 | 86 / 14 / 14 / 86 |
+
+| contrast | isolates | Δ | 95% CI | |
+|---|---|---|---|---|
+| B − A | forced choice alone (raw) | +0.1600 | [+0.0859, +0.2330] | excludes zero |
+| **B − A'** | **forced choice NET of base rate** | **+0.1900** | [+0.1094, +0.2588] | excludes zero |
+| D − C | forced choice given crop (raw) | +0.2200 | [+0.1402, +0.2935] | excludes zero |
+| **D − C'** | **forced choice given crop, NET** | **+0.2500** | [+0.1700, +0.3182] | excludes zero |
+| A' − A | cost of base-rate matching | −0.0300 | [−0.0808, +0.0263] | includes zero |
+| C' − C | cost of base-rate matching | −0.0300 | [−0.0743, +0.0140] | includes zero |
+| C' − A' | region grounding, base-rate matched | +0.0100 | [−0.0348, +0.0510] | includes zero |
+
+**Conclusion: the confound does not explain the effect.** Handing the threshold
+cells the correct base rate does not close the gap -- it *widens* it, from +0.16
+to +0.19 (whole image) and +0.22 to +0.25 (cropped). Forced choice's advantage is
+not the free prior; matching the base rate costs the threshold cells accuracy
+because their accuracy-maximising tau was deliberately unbalanced.
+
+**Balanced accuracy was NOT computed as a mitigation.** Owner is correct that it
+is a no-op: gold is exactly 100/100, so BA equals accuracy for every cell.
+Per-class precision/recall are reported descriptively in
+`results/tables/table1_ablation.csv` (tp/fp/fn/tn columns).
+
+Note the D-019 conclusion survives the control: region grounding alone is +0.0100
+with a CI straddling zero under *both* tau-selection rules.
+
+### D-023 — permuted-id diagnostic: leakage falsified empirically
+
+Run once at limit 100, seed 20260907, flagged, **diagnostic-only**. Records are
+never a reported number; `permute_pair_ids` carries that in its docstring.
+
+| | real ids | permuted ids |
+|---|---|---|
+| positive holds the lower id | 100/100 (1.0000) | 41/100 (0.4100) |
+| **position-only baseline** | **1.0000** | **0.4100** |
+| Cell A | 0.6300 | **0.6300** (delta +0.000000) |
+| Cell D | 0.8600 | **0.8600** (delta +0.000000) |
+
+`(image, obj, attr, pred, gold)` tuples were **identical** for both A and D
+before and after permutation -- only the id each record is filed under changed.
+
+This converts the D-017 static audit into an empirical falsification: no cell
+reads a question id. The position-only baseline collapses, as designed.
+
+0.4100 rather than 0.5000 is binomial noise: with 100 pairs at p=0.5 the standard
+deviation is 5 pairs, so 41 sits 1.8 SD low. Not a defect; simply the realised
+draw at this seed.
+
+**Not adopted for M3**, per the owner's instruction and D-021's costing.
+
+### D-024 — PRD §2 framing revision drafted, NOT applied
+
+`docs/prd_section2_draft.md` holds a proposed replacement for PRD §2. **`PRD.md`
+is unmodified.** The draft replaces "two independent changes" with one change
+that works alone (forced choice) and a second that pays only in combination
+(region grounding), making the +0.06 superadditive interaction the claim.
+
+The draft flags three things for the review: every number is 100 dev pairs and
+the magnitudes are not stable; the proposed *mechanism* for why cropping needs
+forced choice is a hypothesis I have not measured; and PRD §3's non-goals need a
+second look, since disclaiming region grounding as prior art sits oddly beside a
+finding that it does nothing on its own.

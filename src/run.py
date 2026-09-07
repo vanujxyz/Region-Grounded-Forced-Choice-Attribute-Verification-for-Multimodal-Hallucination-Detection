@@ -157,12 +157,44 @@ def write_jsonl(records: list[dict], path: Path) -> Path:
     return path
 
 
-def select_pairs(split: str, limit: int | None) -> list:
+PERMUTE_SEED = 20260907
+
+
+def permute_pair_ids(pairs: list, seed: int = PERMUTE_SEED) -> list:
+    """D-021 DIAGNOSTIC ONLY. Randomise which id of a pair holds the gold positive.
+
+    In real AMBER the gold positive is ALWAYS the lower id (D-009, 2774/2774),
+    so a detector that ignores the image and answers yes to the lower id scores
+    1.0000. This builds a permuted variant to falsify the question of whether any
+    cell reads ids.
+
+    **This output is never a reported number.** An AMBER id is bound to a
+    question's text, so permuting ids fabricates a variant whose ids no longer
+    mean what AMBER's mean, forfeiting the comparability TRD §11.1 exists to
+    preserve. Records are tagged ``diagnostic_permuted: True``.
+
+    Expected: position-only collapses to ~0.50; cells A-D are unchanged, because
+    none of them reads an id.
+    """
+    import random
+
+    rng = random.Random(seed)
+    out = []
+    for p in pairs:
+        q = p.model_copy(deep=True)
+        if rng.random() < 0.5:
+            q.positive_id, q.negative_id = p.negative_id, p.positive_id
+        out.append(q)
+    return out
+
+
+def select_pairs(split: str, limit: int | None, permute_ids: bool = False) -> list:
     """Pairs whose image is in ``split``, in deterministic id order."""
     images = set(get_split(split))
     pairs = [p for p in load_attr_pairs() if p.image in images]
     pairs.sort(key=lambda p: p.positive_id)
-    return pairs[:limit] if limit else pairs
+    pairs = pairs[:limit] if limit else pairs
+    return permute_pair_ids(pairs) if permute_ids else pairs
 
 
 def _qtype_map() -> dict[int, str]:
@@ -174,11 +206,13 @@ def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> d
     from PIL import Image
 
     from src.modules.attribute import (
-        CELL_DECISION,
-        CELL_REGION,
+        DIAG_CELLS,
         AttributeScorer,
+        decision_of,
         fit_tau,
+        fit_tau_base_rate,
         predict_pair,
+        region_of,
     )
 
     pairs = select_pairs(split, limit)
@@ -186,7 +220,7 @@ def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> d
         raise RuntimeError(f"no pairs selected for split={split} limit={limit}")
 
     images_dir = paths()["images"]
-    needs_crop = CELL_REGION[cell] == "crop"
+    needs_crop = region_of(cell) == "crop"
     vram = VramTracker()
 
     # ---- Stage 1: detection (only for crop cells). Freed before stage 2. ----
@@ -231,7 +265,7 @@ def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> d
             )
 
         tau = None
-        if CELL_DECISION[cell] == "threshold":
+        if decision_of(cell) == "threshold":
             # TRD §7: tau fitted on dev by sweeping. See D-012 on the --limit case.
             fit_data: list[tuple[float, str]] = []
             for p in pairs:
@@ -241,9 +275,16 @@ def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> d
                 by = dict(zip(p.options, sc))
                 fit_data.append((by[p.positive_attr], "yes"))
                 fit_data.append((by[p.negative_attr], "no"))
-            tau, fit_acc = fit_tau(fit_data)
-            tau_info = {"tau": tau, "fit_accuracy": fit_acc, "fit_n": len(fit_data),
-                        "fit_split": split, "fit_limit": limit}
+            if cell in DIAG_CELLS:
+                # D-020: tau matched to the known base rate, not to accuracy.
+                tau, tau_info = fit_tau_base_rate(fit_data)
+            else:
+                tau, fit_acc = fit_tau(fit_data)
+                tau_info = {"tau": tau, "selection": "accuracy_maximising",
+                            "fit_accuracy": fit_acc, "fit_n": len(fit_data)}
+            tau_info["fit_split"] = split
+            tau_info["fit_limit"] = limit
+            tau_info["protocol"] = "fit-on-eval"
 
         for p in pairs:
             t0 = time.perf_counter()
@@ -345,7 +386,9 @@ def _report(name: str, result: dict) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="src.run")
-    ap.add_argument("--cell", choices=["A", "B", "C", "D", "all"])
+    ap.add_argument(
+        "--cell", choices=["A", "B", "C", "D", "Ap", "Cp", "all", "all-diag"]
+    )
     ap.add_argument(
         "--module",
         choices=["attribute", "existence", "counting", "relation", "position-only", "all"],
@@ -377,7 +420,12 @@ def main(argv: list[str] | None = None) -> int:
     if not args.cell:
         ap.error("--cell is required for the attribute module")
 
-    cells = ["A", "B", "C", "D"] if args.cell == "all" else [args.cell]
+    if args.cell == "all":
+        cells = ["A", "B", "C", "D"]
+    elif args.cell == "all-diag":
+        cells = ["Ap", "Cp"]
+    else:
+        cells = [args.cell]
     for cell in cells:
         result = run_attribute_cell(cell, args.split, args.limit, cfg)
         run_id = f"attribute_{cell}_{args.split}_{stamp}"

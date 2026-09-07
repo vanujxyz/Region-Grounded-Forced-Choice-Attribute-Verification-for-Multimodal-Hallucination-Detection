@@ -26,6 +26,17 @@ from src.config import apply_hf_cache, load_config
 from src.data.pairs import AttrPair
 
 CELLS = ("A", "B", "C", "D")
+
+# D-020 diagnostic cells: identical to A and C, but tau is chosen so that the
+# total number of "yes" predictions matches the dataset base rate, instead of
+# maximising accuracy. This hands the threshold cells the same structural
+# information forced choice gets for free from AMBER's exactly balanced pairs.
+# They are NOT part of the 2x2 -- they are a control for D-020.
+DIAG_CELLS = ("Ap", "Cp")
+DIAG_LABEL = {"Ap": "A-prime", "Cp": "C-prime"}
+DIAG_REGION = {"Ap": "full", "Cp": "crop"}
+DIAG_DECISION = {"Ap": "threshold", "Cp": "threshold"}
+ALL_CELLS = CELLS + DIAG_CELLS
 CELL_REGION = {"A": "full", "B": "full", "C": "crop", "D": "crop"}
 CELL_DECISION = {
     "A": "threshold",
@@ -148,6 +159,22 @@ def _record(
     }
 
 
+def region_of(cell: str) -> str:
+    if cell in CELL_REGION:
+        return CELL_REGION[cell]
+    if cell in DIAG_REGION:
+        return DIAG_REGION[cell]
+    raise ValueError(f"unknown cell {cell!r}; expected one of {ALL_CELLS}")
+
+
+def decision_of(cell: str) -> str:
+    if cell in CELL_DECISION:
+        return CELL_DECISION[cell]
+    if cell in DIAG_DECISION:
+        return DIAG_DECISION[cell]
+    raise ValueError(f"unknown cell {cell!r}; expected one of {ALL_CELLS}")
+
+
 def decide(
     options: list[str],
     scores: list[float],
@@ -165,7 +192,7 @@ def decide(
     answers: dict[str, str] = {}
     confidences: dict[str, float] = {}
 
-    if CELL_DECISION[cell] == "threshold":
+    if decision_of(cell) == "threshold":
         if tau is None:
             raise ValueError(f"cell {cell} needs a fitted tau; none was supplied")
         for a in options:
@@ -200,8 +227,8 @@ def predict_pair(
     runtime_ms: float | None = None,
 ) -> list[dict]:
     """Emit exactly two predictions for a pair, one per question id."""
-    if cell not in CELLS:
-        raise ValueError(f"cell must be one of {CELLS}, got {cell!r}")
+    if cell not in ALL_CELLS:
+        raise ValueError(f"cell must be one of {ALL_CELLS}, got {cell!r}")
     crop_info = crop_info or {"fell_back": False, "detector_score": None}
 
     options = pair.options  # alphabetical, content-independent, id-independent
@@ -259,3 +286,47 @@ def fit_tau(scores_and_golds: list[tuple[float, str]]) -> tuple[float, float]:
         if acc > best_acc:
             best_tau, best_acc = tau, acc
     return best_tau, best_acc
+
+
+def fit_tau_base_rate(
+    scores_and_golds: list[tuple[float, str]], target_yes: int | None = None
+) -> tuple[float, dict[str, Any]]:
+    """D-020: pick tau so the predicted-yes COUNT matches the dataset base rate.
+
+    Cells B and D emit exactly one "yes" per pair by construction, and AMBER's
+    attribute pairs are exactly balanced, so forced choice is handed a correct
+    50/50 prior for free. A threshold cell has no such information: Cell A
+    over-predicts yes, Cell C under-predicts, and both are penalised for it.
+
+    A' and C' remove that asymmetry by choosing tau to match the known base rate
+    rather than to maximise accuracy. Selection rule: sort scores descending and
+    take tau as the ``target_yes``-th largest, so exactly ``target_yes`` scores
+    satisfy ``score >= tau`` (ties can push the realised count higher; the
+    realised count is reported, never assumed).
+
+    This is still fit on the evaluation data, exactly like every other dev-split
+    tau (D-012). It exchanges one kind of oracle knowledge for another: A' is
+    told the base rate instead of being tuned for accuracy. That is the point --
+    it is the control that isolates how much of B/D's margin is the free prior.
+    """
+    if not scores_and_golds:
+        raise ValueError("cannot fit tau on an empty set")
+    if target_yes is None:
+        target_yes = sum(1 for _, g in scores_and_golds if g == "yes")
+    n = len(scores_and_golds)
+    if not 0 < target_yes <= n:
+        raise ValueError(f"target_yes must be in (0, {n}], got {target_yes}")
+
+    desc = sorted((s for s, _ in scores_and_golds), reverse=True)
+    tau = desc[target_yes - 1]
+    realised = sum(1 for s, _ in scores_and_golds if s >= tau)
+    correct = sum(1 for s, g in scores_and_golds if (("yes" if s >= tau else "no") == g))
+    return tau, {
+        "tau": tau,
+        "selection": "base_rate_matched",
+        "target_yes": target_yes,
+        "realised_yes": realised,
+        "ties_at_tau": realised - target_yes,
+        "fit_accuracy": correct / n,
+        "fit_n": n,
+    }

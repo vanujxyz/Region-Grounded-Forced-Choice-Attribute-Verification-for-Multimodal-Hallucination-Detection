@@ -141,8 +141,75 @@ def test_threshold_cell_without_tau_raises(cell):
 
 
 def test_unknown_cell_raises():
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError, match="unknown cell"):
         _answers(["a", "b"], [1.0, 2.0], "Z")
+
+
+# --------------------------------------------------------------------------
+# D-020: base-rate-matched tau for the A'/C' control cells
+# --------------------------------------------------------------------------
+def test_base_rate_tau_hits_the_target_count():
+    from src.modules.attribute import fit_tau_base_rate
+
+    data = [(float(i), "yes" if i >= 5 else "no") for i in range(10)]
+    tau, info = fit_tau_base_rate(data)
+    assert info["target_yes"] == 5
+    assert info["realised_yes"] == 5
+    assert sum(1 for s, _ in data if s >= tau) == 5
+    assert info["selection"] == "base_rate_matched"
+
+
+def test_base_rate_tau_reports_ties_rather_than_hiding_them():
+    from src.modules.attribute import fit_tau_base_rate
+
+    data = [(1.0, "yes"), (1.0, "yes"), (1.0, "no"), (0.0, "no")]
+    tau, info = fit_tau_base_rate(data)
+    assert info["target_yes"] == 2
+    assert info["realised_yes"] == 3  # three scores tie at tau
+    assert info["ties_at_tau"] == 1
+
+
+def test_base_rate_tau_may_be_worse_than_accuracy_maximising():
+    """A' trades accuracy for a correct base rate. That is the point."""
+    from src.modules.attribute import fit_tau, fit_tau_base_rate
+
+    data = [(3.0, "yes"), (2.0, "no"), (1.0, "no"), (0.0, "no")]
+    _, best = fit_tau(data)
+    _, info = fit_tau_base_rate(data)
+    assert info["fit_accuracy"] <= best
+
+
+def test_base_rate_tau_explicit_target():
+    from src.modules.attribute import fit_tau_base_rate
+
+    data = [(float(i), "no") for i in range(10)]
+    _, info = fit_tau_base_rate(data, target_yes=3)
+    assert info["realised_yes"] == 3
+
+
+def test_base_rate_tau_rejects_bad_target():
+    from src.modules.attribute import fit_tau_base_rate
+
+    with pytest.raises(ValueError):
+        fit_tau_base_rate([(1.0, "yes")], target_yes=0)
+    with pytest.raises(ValueError):
+        fit_tau_base_rate([(1.0, "yes")], target_yes=5)
+
+
+def test_diag_cells_are_not_part_of_the_2x2():
+    from src.modules.attribute import ALL_CELLS, DIAG_CELLS
+
+    assert DIAG_CELLS == ("Ap", "Cp")
+    assert set(DIAG_CELLS).isdisjoint(CELLS)
+    assert ALL_CELLS == ("A", "B", "C", "D", "Ap", "Cp")
+
+
+def test_diag_cells_route_like_their_parents():
+    from src.modules.attribute import decision_of, region_of
+
+    assert region_of("Ap") == region_of("A") == "full"
+    assert region_of("Cp") == region_of("C") == "crop"
+    assert decision_of("Ap") == decision_of("Cp") == "threshold"
 
 
 # --------------------------------------------------------------------------
