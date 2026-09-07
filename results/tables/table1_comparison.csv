@@ -1,11 +1,11 @@
 comparison,isolates,point,mean,ci_low,ci_high,excludes_zero,n_images,n_resamples,split,protocol
-C minus A,region grounding alone,0.010000000000000009,0.01007786629190645,-0.0490196078431373,0.06796116504854377,False,33,10000,dev (limit 100),fit-on-eval where tau present
-Cp minus Ap,"region grounding alone, base-rate matched",0.010000000000000009,0.009769347053698193,-0.0347851365015167,0.05102040816326536,False,33,10000,dev (limit 100),fit-on-eval where tau present
-B minus A,forced choice alone (raw),0.16000000000000003,0.16051823350146607,0.08585497835497835,0.23295454545454541,True,33,10000,dev (limit 100),fit-on-eval where tau present
-B minus Ap,"forced choice alone, NET of base rate",0.19000000000000006,0.18996569564381402,0.10937051005747127,0.2588235294117647,True,33,10000,dev (limit 100),fit-on-eval where tau present
-D minus C,forced choice given cropping (raw),0.21999999999999997,0.2199039662821965,0.1402439024390244,0.29348075388911044,True,33,10000,dev (limit 100),fit-on-eval where tau present
-D minus Cp,"forced choice given cropping, NET of base rate",0.25,0.2496599476627527,0.17000000000000004,0.31818181818181823,True,33,10000,dev (limit 100),fit-on-eval where tau present
-D minus B,cropping given forced choice,0.06999999999999995,0.06946359907263688,0.021739130434782594,0.12149532710280375,True,33,10000,dev (limit 100),fit-on-eval where tau present
-Ap minus A,"cost of base-rate matching, whole image",-0.030000000000000027,-0.029447462142347967,-0.08080808080808077,0.026315789473684185,False,33,10000,dev (limit 100),fit-on-eval where tau present
-Cp minus C,"cost of base-rate matching, crop",-0.030000000000000027,-0.029755981380556226,-0.07425742574257432,0.014021997883971087,False,33,10000,dev (limit 100),fit-on-eval where tau present
-D minus A,both (headline),0.22999999999999998,0.22998183257410296,0.15150634249471456,0.30208333333333326,True,33,10000,dev (limit 100),fit-on-eval where tau present
+C minus A,region grounding alone,0.010000000000000009,0.01007786629190645,-0.0490196078431373,0.06796116504854377,False,33,10000,dev,fit-on-eval where tau present
+Cp minus Ap,"region grounding alone, base-rate matched",0.010000000000000009,0.009769347053698193,-0.0347851365015167,0.05102040816326536,False,33,10000,dev,fit-on-eval where tau present
+B minus A,forced choice alone (raw),0.16000000000000003,0.16051823350146607,0.08585497835497835,0.23295454545454541,True,33,10000,dev,fit-on-eval where tau present
+B minus Ap,"forced choice alone, NET of base rate",0.19000000000000006,0.18996569564381402,0.10937051005747127,0.2588235294117647,True,33,10000,dev,fit-on-eval where tau present
+D minus C,forced choice given cropping (raw),0.21999999999999997,0.2199039662821965,0.1402439024390244,0.29348075388911044,True,33,10000,dev,fit-on-eval where tau present
+D minus Cp,"forced choice given cropping, NET of base rate",0.25,0.2496599476627527,0.17000000000000004,0.31818181818181823,True,33,10000,dev,fit-on-eval where tau present
+D minus B,cropping given forced choice,0.06999999999999995,0.06946359907263688,0.021739130434782594,0.12149532710280375,True,33,10000,dev,fit-on-eval where tau present
+Ap minus A,"cost of base-rate matching, whole image",-0.030000000000000027,-0.029447462142347967,-0.08080808080808077,0.026315789473684185,False,33,10000,dev,fit-on-eval where tau present
+Cp minus C,"cost of base-rate matching, crop",-0.030000000000000027,-0.029755981380556226,-0.07425742574257432,0.014021997883971087,False,33,10000,dev,fit-on-eval where tau present
+D minus A,both (headline),0.22999999999999998,0.22998183257410296,0.15150634249471456,0.30208333333333326,True,33,10000,dev,fit-on-eval where tau present
