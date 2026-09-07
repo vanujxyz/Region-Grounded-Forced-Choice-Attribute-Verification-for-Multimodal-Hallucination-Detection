@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Self
 
 import torch
@@ -32,11 +34,20 @@ CELLS = ("A", "B", "C", "D")
 # maximising accuracy. This hands the threshold cells the same structural
 # information forced choice gets for free from AMBER's exactly balanced pairs.
 # They are NOT part of the 2x2 -- they are a control for D-020.
+# D-032: Cell D-ext. Identical to Cell D, but the competing attribute comes from
+# an external antonym map (configs/antonyms.yaml), never from the dataset's
+# paired negative. Each question is answered ON ITS OWN -- no pair structure is
+# used at any point -- so it cannot exploit contrastive structure the baseline
+# lacks. Questions whose attribute is unmapped are reported, never guessed.
+EXT_CELLS = ("Dext",)
+EXT_REGION = {"Dext": "crop"}
+EXT_DECISION = {"Dext": "forced_choice_external"}
+
 DIAG_CELLS = ("Ap", "Cp")
 DIAG_LABEL = {"Ap": "A-prime", "Cp": "C-prime"}
 DIAG_REGION = {"Ap": "full", "Cp": "crop"}
 DIAG_DECISION = {"Ap": "threshold", "Cp": "threshold"}
-ALL_CELLS = CELLS + DIAG_CELLS
+ALL_CELLS = CELLS + DIAG_CELLS + EXT_CELLS
 CELL_REGION = {"A": "full", "B": "full", "C": "crop", "D": "crop"}
 CELL_DECISION = {
     "A": "threshold",
@@ -160,19 +171,75 @@ def _record(
 
 
 def region_of(cell: str) -> str:
-    if cell in CELL_REGION:
-        return CELL_REGION[cell]
-    if cell in DIAG_REGION:
-        return DIAG_REGION[cell]
+    for table in (CELL_REGION, DIAG_REGION, EXT_REGION):
+        if cell in table:
+            return table[cell]
     raise ValueError(f"unknown cell {cell!r}; expected one of {ALL_CELLS}")
 
 
 def decision_of(cell: str) -> str:
-    if cell in CELL_DECISION:
-        return CELL_DECISION[cell]
-    if cell in DIAG_DECISION:
-        return DIAG_DECISION[cell]
+    for table in (CELL_DECISION, DIAG_DECISION, EXT_DECISION):
+        if cell in table:
+            return table[cell]
     raise ValueError(f"unknown cell {cell!r}; expected one of {ALL_CELLS}")
+
+
+@lru_cache(maxsize=4)
+def load_antonyms(path: str | None = None) -> dict[str, str]:
+    """Load the external antonym map (D-032).
+
+    This map is the ONLY source of a competing attribute for Cell D-ext. It is
+    never consulted by cells A-D, and the evaluation path never falls back to
+    the dataset's negative attribute.
+    """
+    import yaml
+
+    from src.config import ROOT
+
+    p = Path(path) if path else (ROOT / "configs" / "antonyms.yaml")
+    if not p.is_absolute():
+        p = ROOT / p
+    if not p.exists():
+        raise FileNotFoundError(f"antonym map not found: {p}")
+    with p.open(encoding="utf-8") as fh:
+        data = yaml.safe_load(fh)
+    table = data["antonyms"]
+    if not isinstance(table, dict) or not table:
+        raise ValueError(f"{p} has no usable 'antonyms' mapping")
+    for k, v in table.items():
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError(f"antonym for {k!r} is not a non-empty string: {v!r}")
+        if v.strip().lower() == str(k).strip().lower():
+            raise ValueError(f"attribute {k!r} is mapped to itself")
+    return {str(k): str(v) for k, v in table.items()}
+
+
+@dataclass
+class CoverageLog:
+    """D-032: which questions the antonym map could and could not serve."""
+
+    mapped: int = 0
+    unmapped: int = 0
+    unmapped_attrs: dict[str, int] = field(default_factory=dict)
+
+    def record(self, attr: str, found: bool) -> None:
+        if found:
+            self.mapped += 1
+        else:
+            self.unmapped += 1
+            self.unmapped_attrs[attr] = self.unmapped_attrs.get(attr, 0) + 1
+
+    def as_dict(self) -> dict[str, Any]:
+        total = self.mapped + self.unmapped
+        top = sorted(self.unmapped_attrs.items(), key=lambda kv: -kv[1])[:25]
+        return {
+            "questions_total": total,
+            "questions_mapped": self.mapped,
+            "questions_unmapped": self.unmapped,
+            "coverage_rate": (self.mapped / total) if total else "NOT_COMPUTED",
+            "distinct_unmapped_attrs": len(self.unmapped_attrs),
+            "top_unmapped": top,
+        }
 
 
 def decide(
@@ -330,3 +397,65 @@ def fit_tau_base_rate(
         "fit_accuracy": correct / n,
         "fit_n": n,
     }
+
+
+def predict_pair_external(
+    scorer: AttributeScorer,
+    pair: AttrPair,
+    image: Image.Image,
+    antonyms: dict[str, str],
+    coverage: CoverageLog,
+    crop_info: dict | None = None,
+    cell: str = "Dext",
+) -> list[dict]:
+    """D-032 Cell D-ext: answer each question ALONE, using an external antonym.
+
+    For the question "Is the sky sunny?" the competitor is ``antonyms['sunny']``
+    -- what the map says is the opposite of "sunny" -- **not** the attribute
+    AMBER happens to have paired with it. The two questions of a pair are
+    answered independently and never see each other, so D-ext can legitimately
+    answer yes twice or no twice.
+
+    A question whose attribute is unmapped produces NO record. It is counted in
+    ``coverage`` and excluded from the scored set. There is deliberately no
+    fallback to the dataset's negative attribute: that would reintroduce the
+    exact leak this cell exists to remove.
+    """
+    crop_info = crop_info or {"fell_back": False, "detector_score": None}
+    out: list[dict] = []
+
+    for qid, attr, gold in (
+        (pair.positive_id, pair.positive_attr, "yes"),
+        (pair.negative_id, pair.negative_attr, "no"),
+    ):
+        competitor = antonyms.get(attr)
+        coverage.record(attr, competitor is not None)
+        if competitor is None:
+            continue
+
+        # Alphabetical, content-independent order (D-006, D-009).
+        options = sorted([attr, competitor])
+        texts = [scorer.prompt(a, pair.obj) for a in options]
+        scores = scorer.score(image, texts)
+        by_attr = dict(zip(options, scores))
+
+        vals = [by_attr[a] for a in options]
+        top = max(vals)
+        scorer.tie_log.record(sum(1 for v in vals if v == top) > 1, f"{options}")
+        winner = options[vals.index(top)]
+
+        mx = max(vals)
+        exps = [math.exp(v - mx) for v in vals]
+        soft = {a: e / sum(exps) for a, e in zip(options, exps)}
+
+        rec = _record(
+            qid, pair, attr, cell,
+            "yes" if winner == attr else "no",
+            soft[winner], gold, crop_info,
+            [by_attr[a] for a in options], None,
+        )
+        rec["competitor_attr"] = competitor
+        rec["competitor_source"] = "external_antonym_map"
+        out.append(rec)
+
+    return out

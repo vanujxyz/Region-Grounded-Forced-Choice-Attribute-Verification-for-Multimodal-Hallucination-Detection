@@ -208,10 +208,13 @@ def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> d
     from src.modules.attribute import (
         DIAG_CELLS,
         AttributeScorer,
+        CoverageLog,
         decision_of,
         fit_tau,
         fit_tau_base_rate,
+        load_antonyms,
         predict_pair,
+        predict_pair_external,
         region_of,
     )
 
@@ -264,6 +267,10 @@ def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> d
                 {"fell_back": c["fell_back"], "detector_score": c["detector_score"]},
             )
 
+        is_external = decision_of(cell) == "forced_choice_external"
+        antonyms = load_antonyms() if is_external else {}
+        coverage = CoverageLog()
+
         tau = None
         if decision_of(cell) == "threshold":
             # TRD §7: tau fitted on dev by sweeping. See D-012 on the --limit case.
@@ -289,10 +296,15 @@ def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> d
         for p in pairs:
             t0 = time.perf_counter()
             img, crop_info = _image_for(p)
-            recs = predict_pair(scorer, p, img, cell, tau=tau, crop_info=crop_info)
+            if is_external:
+                recs = predict_pair_external(
+                    scorer, p, img, antonyms, coverage, crop_info=crop_info, cell=cell
+                )
+            else:
+                recs = predict_pair(scorer, p, img, cell, tau=tau, crop_info=crop_info)
             dt = (time.perf_counter() - t0) * 1000.0
             for r in recs:
-                r["runtime_ms"] = dt / 2.0
+                r["runtime_ms"] = dt / max(1, len(recs))
             records.extend(recs)
 
         ties = scorer.tie_log.as_dict()
@@ -310,6 +322,7 @@ def run_attribute_cell(cell: str, split: str, limit: int | None, cfg: dict) -> d
         "vram": vram.as_dict(),
         "detection_scores": summarise_scores(det_scores),
         "n_unique_regions": len(crops) if needs_crop else "NOT_APPLICABLE",
+        "coverage": coverage.as_dict() if is_external else "NOT_APPLICABLE",
     }
 
 
@@ -375,6 +388,13 @@ def _report(name: str, result: dict) -> dict:
         print(f"  VRAM peak alloc  : {v['peak_allocated_gib']}")
         print(f"  VRAM peak used   : {v.get('peak_used_gib')} of {v.get('total_gib')} GiB")
         print(f"  VRAM per stage   : {v.get('per_stage_peak_allocated_gib')}")
+    if result.get("coverage") not in (None, "NOT_APPLICABLE"):
+        c = result["coverage"]
+        print(f"  antonym coverage : {c['questions_mapped']}/{c['questions_total']} "
+              f"= {c['coverage_rate']}")
+        print(f"  unmapped         : {c['questions_unmapped']} questions, "
+              f"{c['distinct_unmapped_attrs']} distinct attributes")
+        print(f"  top unmapped     : {c['top_unmapped'][:8]}")
     if result.get("detection_scores"):
         d = result["detection_scores"]
         print(f"  detections found : {d['n']} (unique regions: {result.get('n_unique_regions')})")
@@ -387,7 +407,8 @@ def _report(name: str, result: dict) -> dict:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="src.run")
     ap.add_argument(
-        "--cell", choices=["A", "B", "C", "D", "Ap", "Cp", "all", "all-diag"]
+        "--cell",
+        choices=["A", "B", "C", "D", "Ap", "Cp", "Dext", "all", "all-diag"],
     )
     ap.add_argument(
         "--module",
@@ -440,6 +461,7 @@ def main(argv: list[str] | None = None) -> int:
                 "vram": result.get("vram"),
                 "detection_scores": result.get("detection_scores"),
                 "n_unique_regions": result.get("n_unique_regions"),
+                "coverage": result.get("coverage"),
             },
         )
     return 0
