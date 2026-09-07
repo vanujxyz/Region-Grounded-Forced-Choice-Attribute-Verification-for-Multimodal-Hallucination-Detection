@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# The AMBER images are a 1,004-file manual Google Drive download, not source.
+data/images/
+# Upstream clone; data/amber/ holds the copy we actually read.
+data/amber_repo/
+
+# data/splits/splits.json is deliberately NOT ignored: it is frozen and tracked.

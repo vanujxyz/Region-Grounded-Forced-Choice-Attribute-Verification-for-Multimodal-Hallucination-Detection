@@ -1,0 +1,4 @@
+# Cell B — whole image, forced choice.
+cell: B
+region: full
+decision: forced_choice   # argmax over alphabetically sorted options

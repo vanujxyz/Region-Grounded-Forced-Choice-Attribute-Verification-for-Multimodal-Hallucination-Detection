@@ -1,0 +1,5 @@
+# Cell C — cropped region, independent threshold.
+cell: C
+region: crop
+decision: threshold
+tau: null             # fitted on dev only, separately from Cell A

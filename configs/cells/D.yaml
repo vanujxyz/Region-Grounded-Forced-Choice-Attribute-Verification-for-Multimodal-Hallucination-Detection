@@ -1,0 +1,4 @@
+# Cell D — cropped region, forced choice. The proposed method.
+cell: D
+region: crop
+decision: forced_choice

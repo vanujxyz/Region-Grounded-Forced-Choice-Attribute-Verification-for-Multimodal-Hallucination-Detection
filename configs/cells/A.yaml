@@ -1,0 +1,5 @@
+# Cell A — whole image, independent threshold. The standard baseline.
+cell: A
+region: full          # full image
+decision: threshold   # score >= tau
+tau: null             # fitted on dev only; recorded in the results file
