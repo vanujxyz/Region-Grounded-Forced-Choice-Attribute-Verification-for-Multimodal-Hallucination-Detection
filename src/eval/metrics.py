@@ -108,8 +108,39 @@ def fallback_rate(records: Iterable[Record]) -> Metric:
     return sum(1 for r in rs if r["fell_back"]) / len(rs)
 
 
+def distinct_triples(records: Iterable[Record]) -> Metric:
+    """Number of distinct (obj, positive_attr, negative_attr) triples covered.
+
+    D-007: the 2,774 attribute pairs cover only 828 distinct triples across 182
+    objects -- ('sky', 'sunny', 'gloomy') alone appears 235 times. Raw N badly
+    overstates how much independent evidence a result rests on, so N is never
+    reported without this alongside it.
+    """
+    rs = list(records)
+    if not rs:
+        return NOT_COMPUTED
+    if any("triple" not in r for r in rs):
+        return NOT_COMPUTED
+    return len({tuple(r["triple"]) for r in rs})
+
+
+def distinct_images(records: Iterable[Record]) -> Metric:
+    """Number of distinct images -- the bootstrap resampling unit (TRD §11.3)."""
+    rs = list(records)
+    if not rs:
+        return NOT_COMPUTED
+    if any("image" not in r for r in rs):
+        return NOT_COMPUTED
+    return len({r["image"] for r in rs})
+
+
 def _group_block(records: list[Record]) -> dict[str, Metric | int]:
-    block: dict[str, Metric | int] = {"n": len(records), "accuracy": accuracy(records)}
+    block: dict[str, Metric | int] = {
+        "n": len(records),
+        "n_distinct_triples": distinct_triples(records),
+        "n_distinct_images": distinct_images(records),
+        "accuracy": accuracy(records),
+    }
     block.update(precision_recall_f1(records))
     return block
 

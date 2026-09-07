@@ -26,6 +26,12 @@ _QTYPES = [
     "discriminative-hallucination",  # has no sub-type; must be excluded from by_subtype
     "discriminative-relation",
 ]
+_TRIPLES = [
+    ("sky", "sunny", "gloomy"),
+    ("cloud", "white", "black"),
+    ("grass", "green", "blue"),
+    ("man", "sit", "stand"),
+]
 _SUBTYPE = {
     "discriminative-attribute-state": "state",
     "discriminative-attribute-action": "action",
@@ -69,8 +75,36 @@ def ref_prf(records):
     return {"precision": prec, "recall": rec, "f1": f1}
 
 
+def ref_distinct_triples(records):
+    """D-007: distinct (obj, positive_attr, negative_attr) triples."""
+    if len(records) == 0:
+        return _NC
+    seen = set()
+    for r in records:
+        if "triple" not in r:
+            return _NC
+        seen.add(tuple(r["triple"]))
+    return len(seen)
+
+
+def ref_distinct_images(records):
+    if len(records) == 0:
+        return _NC
+    seen = set()
+    for r in records:
+        if "image" not in r:
+            return _NC
+        seen.add(r["image"])
+    return len(seen)
+
+
 def ref_block(records):
-    block = {"n": len(records), "accuracy": ref_accuracy(records)}
+    block = {
+        "n": len(records),
+        "n_distinct_triples": ref_distinct_triples(records),
+        "n_distinct_images": ref_distinct_images(records),
+        "accuracy": ref_accuracy(records),
+    }
     block.update(ref_prf(records))
     return block
 
@@ -125,6 +159,8 @@ def _random_case(rng):
     p_pred_yes = rng.choice([0.0, 1.0, 0.5, rng.random()])
     p_gold_yes = rng.choice([0.0, 1.0, 0.5, rng.random()])
     include_fb = rng.random() < 0.75
+    include_triple = rng.random() < 0.75
+    partial_triple = include_triple and rng.random() < 0.2
     # Sometimes only *some* records carry fell_back, so the field is partial.
     partial_fb = include_fb and rng.random() < 0.2
 
@@ -140,6 +176,8 @@ def _random_case(rng):
             r["cell"] = rng.choice(_CELLS)
         if rng.random() < 0.85:
             r["qtype"] = rng.choice(_QTYPES)
+        if include_triple and (not partial_triple or rng.random() < 0.5):
+            r["triple"] = rng.choice(_TRIPLES)
         if include_fb and (not partial_fb or rng.random() < 0.5):
             r["fell_back"] = rng.random() < 0.3
         records.append(r)

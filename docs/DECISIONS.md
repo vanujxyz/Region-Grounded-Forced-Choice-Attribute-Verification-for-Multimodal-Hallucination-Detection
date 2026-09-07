@@ -87,3 +87,96 @@ characters. The HuggingFace cache will need a short path (e.g. `C:\hf`) at M1.
 ## Tuning log
 
 No tuning has been performed. No threshold has been fitted. No model has been run.
+
+---
+
+## M1 — 2026-09-07
+
+> **Numbering note.** The project owner raised these as "D-002" and "D-003", but
+> those ids were already taken by the M0 log above. They are recorded here as
+> **D-006** and **D-007**. Owner's D-002 = D-006; owner's D-003 = D-007.
+
+### D-005b — AMBER images arrived nested one level deep
+
+The Google Drive archive unzipped to `data/images/image/*.jpg` rather than
+`data/images/*.jpg`. The 1,004 files were moved up one level and the empty
+`image/` directory removed, so the tree matches TRD §1/§2. No file was renamed
+or altered.
+
+Verified after the move: 1004 entries, 1004 matching `AMBER_(\d+)\.jpg`, zero
+non-matching entries, indices exactly `range(1, 1005)` with no gaps, and the set
+equal to the 1,004 distinct `image` fields in `query_all.json`.
+`assert_images()` PASSES.
+
+### D-006 (owner's "D-002") — forced-choice option order
+
+**Measurement, reproduced independently:** alphabetical sorting puts the
+positive attribute first in **1156 of 2774 pairs (41.7%)**, not ~50%.
+
+**Owner's requested change:** evaluate each pair in both option orders and
+average the two score vectors before the argmax.
+
+**Status: RAISED, NOT IMPLEMENTED — awaiting owner decision.**
+
+The requested change is a mathematical no-op under the architecture TRD §7
+specifies. Cell B/D score each option independently:
+
+```python
+scores = [siglip_score(image, f"a photo of a {a} {obj}") for a in sorted_options]
+```
+
+`siglip_score(image, text)` does not depend on which other options exist or where
+they sit in the list -- the options are never presented jointly, so no forward
+pass can observe a position. The score vector for `[gloomy, sunny]` is
+`[s_g, s_s]`; for `[sunny, gloomy]` it is `[s_s, s_g]`; realigned and averaged it
+is `[s_g, s_s]`, unchanged. Identical argmax, identical softmax confidence,
+bit-identical accuracy -- at double the inference cost, with a test that passes
+vacuously and a paper claim that mitigates nothing.
+
+The 41.7% skew is a real descriptive statistic, but it can only bias a method
+that sees the options jointly (a single prompt listing both, or joint encoding).
+
+**The one genuine order-dependence is tie-breaking.** On an exact float tie,
+`argmax` returns index 0 -- the alphabetically-first option -- and given the
+41.7% skew that tie-break slightly favours answering "no" on the positive
+question. Exact ties are rare in float32 but must be counted, not hidden.
+
+Implemented now (the part that is real):
+  - an order-invariance test, kept as a regression guard so the implementation
+    can never silently become order-dependent;
+  - explicit tie detection: ties are counted and reported per run rather than
+    resolved silently by list position.
+
+Deferred pending owner decision: the both-orders averaging.
+
+### D-007 (owner's "D-003") — attribute pairs repeat; raw N overstates evidence
+
+**Measurement, reproduced independently:** the 2,774 attribute pairs cover only
+**828 distinct (object, positive, negative) triples** across **182 objects**,
+over 992 distinct images. `('sky', 'sunny', 'gloomy')` alone appears **235**
+times; the top five triples account for 638 pairs (23%).
+
+    235  ('sky', 'sunny', 'gloomy')
+    147  ('cloud', 'white', 'black')
+    103  ('grass', 'green', 'blue')
+     86  ('forest', 'lively', 'withered')
+     67  ('ground', 'clean', 'dirty')
+
+Bootstrapping over images (TRD §11.3) already handles the correlation correctly,
+so no change to the CI computation. **No code change to the estimator.**
+
+Reporting change implemented: `src/eval/metrics.py` now emits
+`n_distinct_triples` and `n_distinct_images` in every metric block, alongside
+raw `n`, so N is never reported alone. Both are `NOT_COMPUTED` when the field is
+absent. The independent reference implementation in
+`tests/test_metrics_reference.py` computes both separately and the 20,000-case
+cross-check covers them.
+
+**For the paper's limitations section:** accuracy is computed over 2,774
+questions, but those rest on 828 distinct attribute contrasts over a 340-object
+vocabulary. Effective sample size is materially smaller than N suggests.
+
+### D-008 — environment
+
+CUDA build installed from the cu124 index per owner instruction; `HF_HOME=C:\hf`
+to avoid the Windows MAX_PATH failure recorded in D-005.
