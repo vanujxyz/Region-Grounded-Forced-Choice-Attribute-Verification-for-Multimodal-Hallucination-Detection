@@ -734,3 +734,115 @@ not triggered.
    collection or resampling scheme.
 4. **PRD §3 non-goals -- UNCHANGED.** The oddity noted in D-027 stands
    unresolved by choice, not by oversight.
+
+### D-029 — M3 gate scope: state and action only; D1 and D3 do not close at M3
+
+PRD §9 gave M3 the gate *"D1, D2, D3 complete"*, which is not reachable as
+written. PRD §4 defines D1 as predictions for *"all AMBER attribute questions"*
+and D3 as a breakdown by *"state / action / number"*. Both name the 2,072
+`discriminative-attribute-number` questions, which do not pair reliably
+(1,506 singletons vs 283 pairs) and which TRD §4 routes to `counting.py` — an
+**M4** module that does not exist.
+
+**Owner ruling, recorded in PRD §9:**
+- At M3, **D1 and D3 are complete for `state` and `action` only**.
+- **A partial D1 is NOT declared complete.**
+- The `number` breakdown **slips to M4** with `counting.py`; D1 and D3 close then.
+- D2 completes in full at M3.
+
+### D-030 — the original hypothesis is not supported by the data
+
+Recorded plainly, at the owner's instruction, so it cannot be quietly revised
+later.
+
+PRD §2 was written on the premise that **region grounding is the primary
+mechanism** — that cropping to the named object is what fixes attribute
+hallucination, with forced choice as a second, independent improvement. The M2
+ablation does not support that premise:
+
+| contrast | isolates | delta | 95% CI | |
+|---|---|---|---|---|
+| C − A | **region grounding alone** | **+0.0100** | [−0.0490, +0.0680] | **includes zero** |
+| C' − A' | region grounding alone, base-rate matched | +0.0100 | [−0.0348, +0.0510] | **includes zero** |
+| B − A | forced choice alone | +0.1600 | [+0.0859, +0.2330] | excludes zero |
+
+**Cropping alone contributes nothing measurable, under both threshold rules.
+Forced choice carries the effect.** Region grounding pays only in combination
+(D − B = +0.0700, and a +0.0600 superadditive interaction).
+
+**The project's original hypothesis is therefore not supported.** The
+contribution is now **the ablation itself**: a measurement showing that a widely
+assumed mechanism does not work on its own, and that its value is entirely
+interactional.
+
+**No method will be adjusted to recover the original story.** No threshold,
+padding, prompt template or constant has been changed in response to this
+finding, and none will be. The tuning log remains empty. If a later result moves
+region grounding away from zero, that will be reported as a change in evidence,
+not as a vindication of the framing.
+
+### D-031 — deferred to M4, by owner instruction
+
+- **Crop caching** (TRD §0, specified and unbuilt): NOT added mid-run. Cells C, D
+  and C' each repeat the same 1,929 OWLv2 detections in the M3 run, roughly
+  two-thirds of its wall clock. Built at the **start of M4**.
+- **`REL_RE`** (D-001): the corrected regex is applied at **M4**, when
+  `src/modules/relation.py` is created. Not touched before then.
+
+### D-032 — Cell D-ext: an external competing attribute
+
+**The objection this answers.** Cell D takes its competing attribute from AMBER:
+for (sky, sunny, gloomy) it scores "sunny" against "gloomy" because the dataset
+supplies that contrast. A reviewer can fairly argue the method exploits pair
+structure the baseline has no access to, making the comparison unfair. **A'/C' do
+not answer this** — they give the threshold cells a *global* 50% prior, which is
+strictly weaker than pairwise complementarity (D-025).
+
+**The design.** Cell D-ext is identical to Cell D except that the competitor
+comes from `configs/antonyms.yaml`, never from the dataset's paired negative.
+**Each question is answered on its own**: "Is the sky sunny?" is scored against
+whatever the map says is the opposite of *sunny*, and "Is the sky gloomy?"
+against the opposite of *gloomy*. The two questions of a pair never see each
+other, so D-ext can legitimately answer yes twice or no twice. **No pair
+structure is used at any point.**
+
+**Unmapped attributes produce no record.** They are counted and reported, never
+guessed. There is deliberately **no fallback to the dataset's negative** — that
+would reintroduce the exact leak the cell exists to remove.
+
+**Pre-registration.** The map was written and committed **before any D-ext result
+existed**, at the owner's instruction:
+
+| commit | time | contents |
+|---|---|---|
+| `ea3cc68` | 2026-09-07 22:33:13 +0530 | the antonym map alone, 210 entries |
+| `bcd1480` | 2026-09-07 22:35:11 +0530 | D-ext implementation + tests |
+| (first D-ext run) | later | — |
+
+**Construction rule**, stated in the file so it is auditable: each entry is the
+opposite of the key *as a word*, from its ordinary English meaning. The dataset's
+negative attribute was not consulted for any entry. Colour entries use
+conventional visual contrast or complementary hue and are flagged in-file as the
+weakest, most arbitrary part of the map. Most actions have no opposite and are
+omitted.
+
+**Coverage, computed before running:**
+
+| subset | mapped / total | rate |
+|---|---|---|
+| state | 4508 / 4756 | 0.9479 |
+| action | 628 / 792 | 0.7929 |
+| **all** | **5136 / 5548** | **0.9257** |
+
+Largest unmapped: `calm waters` (85), `rolling waves` (58), `swim` (34),
+`calm seas` (22), `rippling water` (21), `jump` (21) — mostly scene phrases and
+actions without opposites.
+
+**The map is not the dataset pairing rebadged.** On pairs whose positive
+attribute is mapped, the map's competitor **differs from AMBER's negative on
+44.1%** (1128 of 2555) and agrees on 55.9%. Some agreement is expected and
+healthy — sunny/gloomy really are opposites. A test asserts the disagreement
+count is non-zero, so the cell can never silently degenerate into Cell D.
+
+**Stakes, per the owner:** this is the strongest single result in the paper if it
+holds, and the most important limitation if it does not.

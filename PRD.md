@@ -133,7 +133,7 @@ Build these so the capstone demo is a complete system, but do not claim novelty 
 | M0 | Repo, data downloaded, evaluation harness + unit tests, splits frozen | Harness passes tests with synthetic predictions |
 | M1 | Cell A baseline running on 100 dev pairs | One real accuracy number printed |
 | M2 | All four ablation cells on 100 dev pairs | Table 1 exists in draft form — **go/no-go decision by the project owner** — **PASSED 2026-09-07** |
-| M3 | All four cells on full dev set + bootstrap CIs | D1, D2, D3 complete |
+| M3 | All four cells on full dev set + bootstrap CIs | D2 complete; **D1 and D3 complete for `state` and `action` only** |
 | M4 | Existence, counting, relation modules; full pipeline | D4, D5, D6 complete |
 | M5 | Test split opened once; paper written | D7 complete |
 
@@ -142,6 +142,20 @@ Build these so the capstone demo is a complete system, but do not claim novelty 
 **Decision authority.** The project owner is the sole decision-maker on gates. An
 earlier version of this section routed the M2 gate through a review with the
 guide; that no longer applies. See `docs/DECISIONS.md` D-028.
+
+**M3 gate scope - explicit, not ambiguous.** D1 as written names "all AMBER
+attribute questions" and D3 names a breakdown by "state / action / number".
+Both therefore depend on the 2,072 `discriminative-attribute-number` questions,
+which do not pair reliably and are routed by TRD §4 to `counting.py` - an **M4**
+module. Accordingly:
+
+- **At M3, D1 and D3 are complete for `state` and `action` only.** They are
+  **not** declared complete outright.
+- **The `number` breakdown slips to M4**, and D1 and D3 close only when
+  `counting.py` exists and the number questions have been scored.
+- D2 (the 2x2 ablation table) completes in full at M3.
+
+See `docs/DECISIONS.md` D-029.
 
 **M2 outcome, 2026-09-07: PASSED.** On 100 dev pairs, Cell D 0.8600 vs Cell A
 0.6300; paired bootstrap D − A = +0.2300, 95% CI [+0.1515, +0.3021], excluding
