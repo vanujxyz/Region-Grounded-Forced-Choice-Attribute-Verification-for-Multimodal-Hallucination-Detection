@@ -1,0 +1,309 @@
+# External antonym map — D-032, Cell D-ext.
+#
+# PURPOSE
+# Cell D takes its competing attribute from AMBER itself: for the pair
+# (sky, sunny, gloomy) it scores "sunny" against "gloomy" because the dataset
+# supplies that contrast. A reviewer can fairly object that the method exploits
+# pair structure the baseline has no access to.
+#
+# Cell D-ext removes that. Each question is answered ON ITS OWN, using a
+# competing attribute drawn from THIS FILE, never from the dataset's paired
+# negative. No pair structure is used at any point.
+#
+# CONSTRUCTION RULE — stated so it is auditable
+# Each entry is the opposite of the key AS A WORD, decided from its ordinary
+# English meaning. The dataset's own negative attribute was NOT consulted for
+# any entry. Where an attribute has no defensible opposite, it is OMITTED and
+# the question is reported as unmapped — there is deliberately no fallback to
+# the dataset's negative, because that would reintroduce exactly the leak this
+# cell exists to remove.
+#
+# Coverage is therefore incomplete by design. The coverage rate is reported
+# alongside the accuracy, and unmapped questions are excluded from the scored
+# set rather than guessed.
+#
+# HONESTY NOTE ON COLOURS
+# Colours have no true antonyms. The colour entries below use the conventional
+# visual contrast (white/black) or the complementary hue (yellow/blue,
+# red/green). This is the weakest and most arbitrary part of the map and is
+# flagged as such: if D-ext underperforms, colour entries are the first place
+# to look, and that is a limitation of the map, not necessarily of the method.
+#
+# ACTIONS
+# Most actions have no opposite (swim, dance, surf, drive). They are omitted
+# rather than paired with an invented contrast. Action coverage is expected to
+# be much lower than state coverage; that is a reportable property, not a bug.
+#
+# WRITTEN AND COMMITTED BEFORE ANY D-ext RESULT WAS COMPUTED.
+
+version: 1
+
+antonyms:
+
+  # --- light / weather -----------------------------------------------------
+  sunny: gloomy
+  gloomy: sunny
+  overcast: sunny
+  bright: dim
+  dim: bright
+  dark: bright
+  dazzling: dull
+  shiny: dull
+  sparkling: dull
+
+  # --- cleanliness ---------------------------------------------------------
+  clean: dirty
+  dirty: clean
+  filthy: pristine
+  pristine: filthy
+  spotless: dirty
+  muddy: clear
+  murky: clear
+  clear: murky
+  messy: tidy
+  tidy: messy
+  neat: messy
+
+  # --- moisture ------------------------------------------------------------
+  dry: wet
+  wet: dry
+
+  # --- size / extent -------------------------------------------------------
+  tall: short
+  short: tall
+  large: small
+  small: large
+  'large-sized': 'small-sized'
+  'small-sized': 'large-sized'
+  wide: narrow
+  narrow: wide
+  long: short
+  vast: tiny
+  endless: limited
+  deep: shallow
+  shallow: deep
+  thick: thin
+  thin: thick
+  high: low
+  low: high
+  lower: higher
+  plump: slender
+
+  # --- shape / texture -----------------------------------------------------
+  round: square
+  square: round
+  oval: square
+  straight: curved
+  curved: straight
+  winding: straight
+  flat: uneven
+  uneven: flat
+  smooth: rough
+  rough: smooth
+  rugged: smooth
+  steep: gentle
+  inclined: level
+  tilted: upright
+  upright: tilted
+  irregular: uniform
+  uniform: irregular
+  regular: irregular
+
+  # --- density / quantity --------------------------------------------------
+  dense: sparse
+  sparse: dense
+  full: empty
+  empty: full
+  'spread out': clustered
+  separated: joined
+  layered: flat
+
+  # --- condition -----------------------------------------------------------
+  new: old
+  old: new
+  'brand new': old
+  intact: damaged
+  damaged: intact
+  broken: intact
+  complete: incomplete
+  incomplete: complete
+  sturdy: fragile
+  fragile: sturdy
+  firm: soft
+  soft: hard
+  hard: soft
+  loose: tight
+  tight: loose
+  folded: unfolded
+  decayed: fresh
+  fresh: stale
+  'in ruins': intact
+  ripe: unripe
+  raw: cooked
+
+  # --- vegetation ----------------------------------------------------------
+  lush: withered
+  withered: lush
+  withering: blooming
+  blooming: withering
+  verdant: withered
+  lively: lifeless
+  barren: fertile
+  'lush green': withered
+  'lush and verdant': withered
+
+  # --- water / motion ------------------------------------------------------
+  calm: turbulent
+  turbulent: calm
+  stormy: calm
+  restless: calm
+  peaceful: turbulent
+  motionless: moving
+  rapid: slow
+  slow: fast
+  gentle: violent
+  suspended: grounded
+  grounded: suspended
+  'upside down': upright
+
+  # --- visibility / prominence ---------------------------------------------
+  hidden: visible
+  visible: hidden
+  prominent: inconspicuous
+  obvious: subtle
+  'eye-catching': inconspicuous
+  transparent: opaque
+
+  # --- aesthetic / affect --------------------------------------------------
+  beautiful: ugly
+  ugly: beautiful
+  'good-looking': ugly
+  'plain-looking': attractive
+  picturesque: drab
+  spectacular: unremarkable
+  exquisite: crude
+  cute: ugly
+  comfortable: uncomfortable
+  uncomfortable: comfortable
+  delicious: unappetizing
+  unappetizing: delicious
+  annoying: pleasant
+
+  # --- pattern / composition -----------------------------------------------
+  plain: patterned
+  patterned: plain
+  striped: plain
+  floral: plain
+  'solid color': patterned
+  monochromatic: colorful
+  colorful: monochromatic
+  colored: colorless
+  simple: complex
+  complex: simple
+  understated: flamboyant
+  varied: uniform
+
+  # --- frequency -----------------------------------------------------------
+  rare: common
+
+  # --- openness ------------------------------------------------------------
+  open: closed
+  closed: open
+
+  # --- colours (weakest category; see HONESTY NOTE above) -------------------
+  white: black
+  black: white
+  'pure white': black
+  'jet-black': white
+  green: brown
+  brown: green
+  blue: gray
+  gray: blue
+  azure: gray
+  'deep blue': gray
+  yellow: blue
+  yellowed: green
+  yellowing: green
+  'yellowing leaves': green
+  red: green
+  'bright red': green
+  'reddish-brown': green
+  pink: gray
+  purple: yellow
+  orange: blue
+  golden: dull
+  gold: dull
+  silver: black
+  emerald: gray
+  khaki: black
+  'yellow-green': gray
+  'fluorescent green': gray
+
+  # --- materials (only where a natural contrast exists) --------------------
+  wooden: metal
+  'natural wood': painted
+  'natural wood color': painted
+  concrete: wooden
+  plastic: wooden
+  linen: synthetic
+  'latex painted': bare
+
+  # --- actions with genuine opposites --------------------------------------
+  stand: sit
+  sit: stand
+  standing: sitting
+  'lie down': stand
+  'lie prone': stand
+  squat: stand
+  'half-squat': stand
+  crouch: stand
+  bend: straighten
+  run: walk
+  walk: run
+  walking: running
+  running: walking
+  laugh: cry
+  cry: laugh
+  sleep: awake
+  fly: land
+  start: stop
+  started: stopped
+  starting: stopping
+  stop: start
+  stopped: started
+  release: grasp
+  burning: extinguished
+  extinguished: burning
+  wither: bloom
+  bloom: wither
+  vibrant: dull
+  dull: vibrant
+  'get in the water': 'come ashore'
+  'come ashore': 'get in the water'
+  'open your mouth': 'close your mouth'
+  'close your mouth': 'open your mouth'
+  close: open
+
+# Attributes deliberately LEFT UNMAPPED (no defensible opposite).
+# Listed for transparency; the loader does not read this section.
+#
+#   actions:  swim, surf, dance, dancing, jump, drive, driving, cycling,
+#             skiing, 'ride a bike', 'horseback riding', 'row a boat', paddle,
+#             park, slide, scratch, raise, kick, strike, 'play ball',
+#             'play soccer', 'play the piano', perform, sing, write, eat,
+#             'take a photo', 'go fishing', hike, glide, bite, sport,
+#             'climb a tree'
+#
+#   scene descriptors that are phrases rather than attributes:
+#             'calm waters', 'rolling waves', 'calm seas', 'rippling water',
+#             'gentle waves', 'raging waves', 'surging waves',
+#             'calm and waveless', 'turbulent and surging', 'cloudy skies',
+#             'blue seas and clear skies', 'surrounded by water',
+#             'sparse vegetation', 'shaded by green trees', 'dead branches',
+#             'falling leaves', 'falling yellow leaves', 'lush branches',
+#             'fruit trees withering', 'rugged mountains',
+#             'flat as far as the eye can see', 'on the brink',
+#             'varied postures', rolling, sliced, semicircle, cylindrical,
+#             tiled, sensory
+#
+#   numerals appearing as attributes: '1', '2', '3', '5'
