@@ -703,3 +703,34 @@ inverted." Restoring the file makes all 7 pass.
 Owner ruling. PRD §3 disclaims region grounding as prior art (ESREAL), which
 reads oddly beside D-019's finding that region grounding alone does nothing
 measurable. Noted as a question for the review, not resolved here.
+
+---
+
+## M3 — 2026-09-07
+
+### D-028 — decision authority; M2 gate PASSED; four open questions resolved by the owner
+
+**Authority.** PRD §9 previously routed the M2 gate through a "go/no-go review
+with guide". That no longer applies: **the project owner is the sole
+decision-maker.** PRD §9 has been updated accordingly -- the first modification
+to `PRD.md` since M0, made on explicit owner instruction.
+
+**M2 gate: PASSED**, 2026-09-07, by the owner. Cell D 0.8600 vs Cell A 0.6300 on
+100 dev pairs; D − A = +0.2300, 95% CI [+0.1515, +0.3021], excludes zero. PRD §5's
+success criterion is met at this sample size, so the negative-result framing is
+not triggered.
+
+**The four open questions, resolved by the owner:**
+
+1. **PRD §2 framing** -- keep the current §2 text for now; the replacement in
+   `docs/prd_section2_draft.md` stays a draft pending M3. Its central claim is
+   built on 100 dev pairs and could invert if the full dev run moves region
+   grounding away from zero (D-019).
+2. **Pairwise-constraint argument -- ACCEPTED.** A′/C′ impose a global base rate;
+   forced choice imposes a per-pair constraint; a threshold rule cannot take the
+   latter without becoming forced choice. The remaining margin is therefore the
+   contribution, not an unremoved confound (D-025).
+3. **Sample size** -- the full dev set is sufficient for now. No additional data
+   collection or resampling scheme.
+4. **PRD §3 non-goals -- UNCHANGED.** The oddity noted in D-027 stands
+   unresolved by choice, not by oversight.

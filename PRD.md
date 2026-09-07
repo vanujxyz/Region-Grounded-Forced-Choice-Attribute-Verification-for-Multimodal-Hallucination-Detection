@@ -132,9 +132,20 @@ Build these so the capstone demo is a complete system, but do not claim novelty 
 |---|---|---|
 | M0 | Repo, data downloaded, evaluation harness + unit tests, splits frozen | Harness passes tests with synthetic predictions |
 | M1 | Cell A baseline running on 100 dev pairs | One real accuracy number printed |
-| M2 | All four ablation cells on 100 dev pairs | Table 1 exists in draft form — **go/no-go review with guide** |
+| M2 | All four ablation cells on 100 dev pairs | Table 1 exists in draft form — **go/no-go decision by the project owner** — **PASSED 2026-09-07** |
 | M3 | All four cells on full dev set + bootstrap CIs | D1, D2, D3 complete |
 | M4 | Existence, counting, relation modules; full pipeline | D4, D5, D6 complete |
 | M5 | Test split opened once; paper written | D7 complete |
 
-**M2 is the decision point.** If the effect is absent at 100 pairs, discuss the negative-result framing with the guide before proceeding to M3.
+**M2 is the decision point.** If the effect is absent at 100 pairs, the negative-result framing of §5 applies and is settled before proceeding to M3.
+
+**Decision authority.** The project owner is the sole decision-maker on gates. An
+earlier version of this section routed the M2 gate through a review with the
+guide; that no longer applies. See `docs/DECISIONS.md` D-028.
+
+**M2 outcome, 2026-09-07: PASSED.** On 100 dev pairs, Cell D 0.8600 vs Cell A
+0.6300; paired bootstrap D − A = +0.2300, 95% CI [+0.1515, +0.3021], excluding
+zero. The §5 success criterion is met at this sample size, so the negative-result
+framing is not triggered. All dev numbers are fit-on-eval where a threshold is
+involved (D-012); the headline remains the M5 test-split run with tau frozen from
+the dev fit.
