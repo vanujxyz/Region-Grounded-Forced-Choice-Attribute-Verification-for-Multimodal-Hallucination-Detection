@@ -19,7 +19,7 @@ fi
 export HF_HOME="${HF_HOME:-C:\\hf}"
 
 echo "pre-commit: ruff ..."
-"$PY" -m ruff check src/ tests/ reproduce.py
+"$PY" -m ruff check src/ tests/ scripts/ reproduce.py
 RUFF=$?
 if [ $RUFF -ne 0 ]; then
     echo ""

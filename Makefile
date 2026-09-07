@@ -18,7 +18,7 @@ test:
 	"$(PY)" -m pytest -q
 
 lint:
-	"$(PY)" -m ruff check src/ tests/ reproduce.py
+	"$(PY)" -m ruff check src/ tests/ scripts/ reproduce.py
 
 check: lint test
 
