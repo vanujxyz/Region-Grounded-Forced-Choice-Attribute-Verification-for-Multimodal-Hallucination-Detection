@@ -429,3 +429,20 @@ non-fallback questions and 0.6000 on the 10 fallback ones.
 
 **Peak VRAM 1.654 GiB used of 3.999 GiB** during two-model staging (torch
 allocator peak 0.772 GiB). No OOM. Sequential load/free worked as designed.
+
+### D-018 — two sentinels: NOT_COMPUTED vs NOT_APPLICABLE
+
+`test_no_placeholders` fired again on the Cell D manifest, which reports
+`tau: NOT_APPLICABLE`. The two sentinels are kept distinct rather than collapsed:
+
+  - **NOT_COMPUTED** -- the metric could have been computed and was not (empty
+    subgroup, undefined denominator, stage not run).
+  - **NOT_APPLICABLE** -- the quantity does not exist for this configuration.
+    Cells B and D are forced choice and have **no tau at all**.
+
+Flattening NOT_APPLICABLE into NOT_COMPUTED would erase exactly the
+free-parameter asymmetry recorded in D-012, which is a point the paper makes.
+Neither sentinel may ever stand in for a number that was actually produced; a
+bare `0`, `0.0`, empty string or null still fails the check. Two tests were added:
+one asserting the sentinels stay distinct and non-numeric, one asserting that any
+B/D manifest declares `tau: NOT_APPLICABLE` explicitly.
