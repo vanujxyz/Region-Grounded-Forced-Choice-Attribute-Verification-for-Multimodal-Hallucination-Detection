@@ -29,12 +29,23 @@ FORBIDDEN = ("", "null", "None", "nan", "N/A", "TODO", "PLACEHOLDER", "-")
 # Columns that hold a metric but whose name shares no token with METRIC_TOKENS.
 METRIC_EXACT = {"primary_value", "best_trivial_baseline", "fpr"}
 
+# Columns that share a token with METRIC_TOKENS but hold DESCRIPTIONS, not
+# numbers: "tau_protocol" records how tau was obtained, "primary_metric" names
+# the metric rather than holding it. Checked before token matching.
+NON_METRIC_EXACT = {
+    "tau_protocol", "tau_selection", "primary_metric", "labels_degenerate",
+    "protocol", "isolates", "comparison", "notes", "label", "module", "cell",
+    "split", "model_id", "revision", "component", "excludes_zero",
+}
+
 # Names that must NOT be treated as metrics even though a token appears inside
 # a longer word. "labels_degenerate" contains "rate" as a substring of
 # "degenerate"; it is a boolean flag. Substring matching caused a false failure,
 # so matching is now on underscore-separated tokens.
 def _is_metric_column(name: str) -> bool:
     low = name.lower()
+    if low in NON_METRIC_EXACT:
+        return False
     if low in METRIC_EXACT:
         return True
     tokens = set(low.split("_"))
@@ -208,3 +219,6 @@ def test_metric_column_matcher_uses_token_boundaries():
     assert not _is_metric_column("module")
     assert not _is_metric_column("notes")
     assert not _is_metric_column("model_id")
+    assert not _is_metric_column("tau_protocol")
+    assert not _is_metric_column("primary_metric")
+    assert _is_metric_column("tau")

@@ -1362,3 +1362,103 @@ Both found by inspecting the first Table 3/4 output rather than trusting it.
 The `newest()` failure mode is the same one that broke `test_tables.py` during M3
 (fixed there by matching on record count). It recurred here in a different script
 because the fix was local. Both call sites now pin the expected count.
+
+---
+
+## M5 — 2026-09-08
+
+### D-049 — the test split, opened once. The headline result.
+
+Opened at 03:15:53Z, one run, all cells. **Every threshold was frozen from the
+development fit**; nothing was fitted on test. The manifests record
+`protocol: frozen-from-dev (NOT fitted on test)` together with the dev manifest
+each tau came from. 1,690 questions / 845 pairs / 296 images.
+
+|  | threshold | forced choice |
+|---|---|---|
+| **whole image** | A **0.5751** | B **0.7787** |
+| **cropped region** | C **0.5953** | D **0.8012** |
+
+Controls: A' 0.5775, C' 0.6012, D-ext 0.7602 (n=1589, coverage 0.9402).
+
+| contrast | isolates | delta | 95% CI | |
+|---|---|---|---|---|
+| **D − A** | **HEADLINE** | **+0.2260** | **[+0.2001, +0.2514]** | **excludes zero** |
+| B − A | forced choice alone | +0.2036 | [+0.1781, +0.2288] | excludes zero |
+| B − A' | forced choice, net of base rate | +0.2012 | [+0.1756, +0.2269] | excludes zero |
+| D − C | forced choice given cropping | +0.2059 | [+0.1808, +0.2306] | excludes zero |
+| D − C' | forced choice given cropping, net | +0.2000 | [+0.1736, +0.2259] | excludes zero |
+| C − A | region grounding alone | +0.0201 | [+0.0012, +0.0391] | excludes zero (barely) |
+| **D − B** | **cropping given forced choice** | **+0.0225** | **[−0.0012, +0.0462]** | **INCLUDES ZERO** |
+
+D-ext on the matched covered subset: **+0.1901** over the baseline
+([+0.1645, +0.2157]), at a cost of −0.0428 against Cell D. Both exclude zero.
+
+**Dev vs test, side by side:**
+
+| quantity | dev | test |
+|---|---|---|
+| headline D − A | +0.2232 | **+0.2260** |
+| forced choice alone | +0.1858 | +0.2036 |
+| region grounding alone | +0.0150 | +0.0201 |
+| cropping given forced choice | +0.0373 (excl. 0) | **+0.0225 (incl. 0)** |
+| interaction | +0.0223 | **+0.0023** |
+| D-ext − A (matched) | +0.1827 | +0.1901 |
+
+**The headline is robust.** +0.2232 on dev, +0.2260 on test, with the baseline
+denied any threshold fitted on the evaluation data. The two intervals overlap
+almost entirely.
+
+### D-050 — one dev finding did NOT replicate: the interaction
+
+**D − B, "cropping pays once forced choice is in place", does not hold on test.**
+
+| | delta | 95% CI | |
+|---|---|---|---|
+| dev | +0.0373 | [+0.0217, +0.0529] | excludes zero |
+| **test** | **+0.0225** | **[−0.0012, +0.0462]** | **includes zero** |
+
+The superadditive interaction collapses with it: **+0.0223 on dev, +0.0023 on
+test** — essentially zero. On the test split the two changes behave additively,
+with forced choice supplying almost all of the effect.
+
+**Region grounding alone survives, but barely.** C − A = +0.0201 with a lower
+bound of **+0.0012** — it clears zero by roughly one part in a thousand. On a
+different split it could easily fall the other side.
+
+**What this does to the framing (revising D-041).** D-041 fixed the description
+as: forced choice dominant, region grounding real but ~12x smaller, positive
+interaction, combination +0.2232. After the test split:
+
+- **"Forced choice is the dominant mechanism" — CONFIRMED and strengthened.**
+  +0.2036 on test, larger than on dev, and it survives the base-rate control
+  (+0.2012) and the external-contrast control (+0.1901).
+- **"Region grounding is real but much smaller" — HOLDS, weakly.** +0.0201, CI
+  lower bound +0.0012. It should be described as *marginal and split-dependent*,
+  not as an established small effect.
+- **"They interact positively" — NOT SUPPORTED on test.** This claim must be
+  withdrawn from the headline framing and reported as a dev-only observation
+  that failed to replicate.
+
+The prohibitions in D-041 still stand: cropping is **not** described as null (it
+is +0.0201 on test with an interval clearing zero) and **not** as the mechanism.
+But the interaction may no longer be presented as a finding.
+
+**No method, threshold or constant was changed in response to this.** The tuning
+log remains empty. This is the second time a claim in this project has been
+withdrawn on stronger evidence (after D-030 → D-038), and both withdrawals are
+reported rather than quietly corrected.
+
+### D-051 — test-split protocol, as executed
+
+- Opened **once**, at 03:15:53Z, after all development work was complete.
+- `ALLOW_TEST_SPLIT=1` required by `src/data/splits.py`; without it the split
+  raises `PermissionError`.
+- Every threshold cell read its tau from a dev manifest via
+  `frozen_tau_from_dev`. The fitting branch is unreachable when
+  `split == "test"`, guarded by a static test asserting the frozen branch
+  precedes the fitting branch.
+- Frozen values: A = −11.027274, C = −5.086052, A' = −10.547152,
+  C' = −7.020545.
+- Split disjointness was frozen at M0: 702 dev / 302 test images by image, seed
+  20260907, and no image appears in both.

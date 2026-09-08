@@ -4,8 +4,8 @@ A hallucination detector for vision-language models: given a photograph and a
 claim about it, decide whether the claim is supported. No LLM, no paid API, runs
 on a 4 GB laptop GPU.
 
-**Status: M2 complete, M3 in progress.** Everything below is the **development**
-split. Nothing here is a final result — see [Limits](#limits).
+**Status: COMPLETE (M0–M5).** Headline numbers are from the held-out **test**
+split, opened once, with every threshold frozen from the development fit.
 
 ---
 
@@ -93,40 +93,54 @@ Plus two controls:
 | **A′, C′** | identical to A and C, but tau chosen so predicted-yes matches the known base rate rather than maximising accuracy |
 | **position-only** | answers from the question id alone, never opens the image — a benchmark artifact, reported so no reviewer discovers it first |
 
-### Results — 100 dev pairs, 200 questions, 62 distinct triples, 33 images
+### Results
 
-|  | threshold | forced choice |
+| cell | dev | **test** (tau frozen) |
 |---|---|---|
-| **whole image** | A **0.6300** | B **0.7900** |
-| **cropped region** | C **0.6400** | D **0.8600** |
+| A — whole image + threshold (baseline) | 0.5829 | **0.5751** |
+| B — whole image + forced choice | 0.7688 | **0.7787** |
+| C — cropped + threshold | 0.5980 | **0.5953** |
+| **D — cropped + forced choice (proposed)** | 0.8061 | **0.8012** |
+| A′ base-rate matched | 0.5770 | 0.5775 |
+| C′ base-rate matched | 0.5905 | 0.6012 |
+| D-ext external contrast | 0.7621 | 0.7602 |
+| position-only | 1.0000 | 1.0000 ⚠ **artifact** |
 
-| control | accuracy | |
-|---|---|---|
-| A′ base-rate matched | 0.6000 | |
-| C′ base-rate matched | 0.6100 | |
-| position-only | 1.0000 | ⚠ **benchmark artifact, sees no image** |
-
-### Attribution — paired bootstrap over images, 10,000 resamples, seed 20260907
+### Attribution — test split, paired bootstrap over 296 images, 10,000 resamples
 
 | contrast | isolates | Δ | 95% CI | |
 |---|---|---|---|---|
-| C − A | region grounding alone | +0.0100 | [−0.0490, +0.0680] | **includes zero** |
-| C′ − A′ | region grounding, base-rate matched | +0.0100 | [−0.0348, +0.0510] | **includes zero** |
-| B − A | forced choice alone | +0.1600 | [+0.0859, +0.2330] | excludes zero |
-| B − A′ | forced choice, net of base rate | +0.1900 | [+0.1094, +0.2588] | excludes zero |
-| D − C | forced choice, given cropping | +0.2200 | [+0.1402, +0.2935] | excludes zero |
-| D − C′ | forced choice given cropping, net of base rate | +0.2500 | [+0.1700, +0.3182] | excludes zero |
-| D − B | cropping, given forced choice | +0.0700 | [+0.0217, +0.1215] | excludes zero |
-| **D − A** | **both (headline)** | **+0.2300** | **[+0.1515, +0.3021]** | **excludes zero** |
+| **D − A** | **headline** | **+0.2260** | **[+0.2001, +0.2514]** | excludes zero |
+| B − A | forced choice alone | +0.2036 | [+0.1781, +0.2288] | excludes zero |
+| B − A′ | forced choice, net of base rate | +0.2012 | [+0.1756, +0.2269] | excludes zero |
+| D − C | forced choice given cropping | +0.2059 | [+0.1808, +0.2306] | excludes zero |
+| C − A | region grounding alone | +0.0201 | [+0.0012, +0.0391] | excludes zero (barely) |
+| **D − B** | cropping given forced choice | +0.0225 | [−0.0012, +0.0462] | **INCLUDES ZERO** |
 
-Interaction (D−A) − (B−A) − (C−A) = **+0.0600**, superadditive.
+Interaction: **+0.0223 on dev, +0.0023 on test.**
 
-**Read it this way.** Forced choice carries the effect on its own. **Region
-grounding alone does nothing measurable** — +0.01 with a CI straddling zero,
-under both threshold rules. Cropping pays only once forced choice is in place
-(+0.07). The finding is the interaction, not two independent gains. The raw and
-base-rate-matched contrasts are always quoted as a pair — (+0.16, +0.19) and
-(+0.22, +0.25) — never one alone.
+**Read it this way.** Forced choice carries essentially the whole effect
+(+0.2036 of +0.2260). Region grounding alone is +0.0201 with a lower bound of
++0.0012 — it clears zero by about one part in a thousand. **The positive
+interaction found on dev did not replicate on test**, and is reported as a
+failed replication rather than a finding. Cropping is described as neither null
+nor the mechanism.
+
+D-ext on the matched covered subset (94.0% coverage): **+0.1901 over the
+baseline** [+0.1645, +0.2157], at a cost of −0.0428 against Cell D.
+
+### Supporting modules (dev)
+
+| module | metric | value | trivial baseline |
+|---|---|---|---|
+| counting | accuracy | 0.7196 | 0.5000 |
+| counting | *exact count match* | **0.3632** | — |
+| existence | **false-positive rate** @0.10 | **0.1244** (428/3441) | 1.0000 ⚠ |
+| relation (pooled) | accuracy | 0.6056 | 0.5851 |
+
+Counting is right for the wrong reason often — 72% correct yes/no on 36% correct
+counts. Relation barely beats its trivial baseline. Both are off-the-shelf
+components, not contributions.
 
 ### By sub-type
 

@@ -1,0 +1,10 @@
+comparison,isolates,point,mean,ci_low,ci_high,excludes_zero,n_images,n_resamples,split,protocol
+C minus A,region grounding alone,0.020118343195266286,0.020237910068581083,0.0012330076594607026,0.03905348557692303,True,296,10000,test,tau frozen from dev; nothing fitted on test
+B minus A,forced choice alone,0.20355029585798812,0.20377546329377577,0.1780637915543576,0.22880301062095057,True,296,10000,test,tau frozen from dev; nothing fitted on test
+B minus Ap,"forced choice, net of base rate",0.20118343195266264,0.20142119239211426,0.17559094800747202,0.22685810765064318,True,296,10000,test,tau frozen from dev; nothing fitted on test
+D minus C,forced choice given cropping,0.2059171597633136,0.20600699440417303,0.18076423577401274,0.23063692111924838,True,296,10000,test,tau frozen from dev; nothing fitted on test
+D minus Cp,"forced choice given cropping, net",0.19999999999999996,0.20020815804993408,0.17361961461049516,0.22586502376176493,True,296,10000,test,tau frozen from dev; nothing fitted on test
+D minus B,cropping given forced choice,0.022485207100591764,0.022469441178978353,-0.0011976406898433656,0.04620853080568721,False,296,10000,test,tau frozen from dev; nothing fitted on test
+D minus A,HEADLINE: both,0.22603550295857988,0.2262449044727541,0.20011945657633737,0.2514194983367561,True,296,10000,test,tau frozen from dev; nothing fitted on test
+D-ext - A (covered),"external contrast, matched subset",0.19005663939584638,0.19011545156567153,0.16453985003092148,0.21567428852418713,True,294,10000,test,matched covered subset
+D-ext - D (covered),"external contrast, matched subset",-0.04279421019509133,-0.042703039748768164,-0.05886206639439286,-0.026021686752403753,True,294,10000,test,matched covered subset

@@ -38,15 +38,19 @@ thresholding the score, an approach known to be unreliable because contrastive
 models bind attributes to objects poorly. Two remedies are widely assumed to
 help: cropping to the named object, and replacing the threshold with a forced
 choice between competing attribute values. We implement both, and isolate them
-with a $2\times2$ ablation on 3{,}858 attribute questions from AMBER. The
-combination improves accuracy by $+0.2232$ (95\% CI $[+0.2057, +0.2405]$) over
-the standard baseline. The ablation, however, contradicts the common assumption
-about \emph{why}: forced choice alone accounts for $+0.1858$, whereas region
-grounding alone accounts for only $+0.0150$ --- real, but roughly twelve times
-smaller --- with a positive interaction of $+0.0223$. We further show the gain
-does not depend on the benchmark supplying the competing attribute: substituting
-a fixed antonym list written before any result was computed, and scoring each
-question in isolation, still yields $+0.1827$ over the baseline. Finally, we
+with a $2\times2$ ablation on 3{,}858 development questions from AMBER,
+confirmed on a held-out test split of 1{,}690 questions with all thresholds
+frozen from the development fit. The combination improves accuracy by
+$+0.2260$ (95\% CI $[+0.2001, +0.2514]$) on the test split, closely matching the
+$+0.2232$ measured on development. The ablation, however, contradicts the common
+assumption about \emph{why}: forced choice alone accounts for $+0.2036$ of that,
+whereas region grounding alone accounts for $+0.0201$ --- an interval that clears
+zero only marginally. A positive interaction observed on development
+($+0.0223$) did \emph{not} replicate on test ($+0.0023$), and we report that
+failure. We further show the gain does not depend on the benchmark supplying the
+competing attribute: substituting a fixed antonym list written before any result
+was computed, and scoring each question in isolation, still yields $+0.1901$ over
+the baseline. Finally, we
 document three construction artifacts in AMBER that allow trivial,
 image-independent strategies to score $1.0000$, and show that the question types
 supporting our result are free of them. The system uses two open-weight models
@@ -93,11 +97,11 @@ the one the intuitions predict.
       independently, on 3{,}858 AMBER attribute questions, with confidence
       intervals bootstrapped over images.
 \item The finding that \emph{forced choice carries almost the entire effect}.
-      Region grounding alone contributes $+0.0150$ --- statistically detectable
-      but roughly twelve times smaller than forced choice's $+0.1858$. We
-      initially reported region grounding as null on a smaller sample and
-      withdrew that claim when the full development set contradicted it; we
-      report the correction rather than only the corrected number.
+      On the test split, region grounding alone contributes $+0.0201$ against
+      forced choice's $+0.2036$. Two claims were withdrawn during this work on
+      stronger evidence --- region grounding as null, and a superadditive
+      interaction --- and we report both withdrawals rather than only the
+      surviving numbers.
 \item Two controls that rule out the obvious objections: a base-rate-matched
       threshold baseline, and a variant in which the competing attribute comes
       from a pre-registered external antonym list rather than the benchmark.
@@ -196,62 +200,84 @@ simultaneously: each loads, runs its stage, and is freed. Peak VRAM 1.65\,GiB.
 \subsection{The ablation}
 
 \begin{table}[t]
-\caption{Development set, 3{,}858 questions over 696 images. Threshold cells fit
-$\tau$ on the evaluation data, which favours the baseline.}
+\caption{Accuracy by cell. Development: 3{,}858 questions over 696 images, with
+$\tau$ fitted on the evaluation data (which favours the baseline). Test:
+1{,}690 questions over 296 images, with $\tau$ \emph{frozen} from the
+development fit and nothing fitted on test.}
 \label{tab:cells}
 \centering
 \begin{tabular}{lcc}
 \toprule
-& \textbf{Threshold} & \textbf{Forced choice} \\
+\textbf{Cell} & \textbf{Dev} & \textbf{Test} \\
 \midrule
-Whole image & A \: 0.5829 & B \: 0.7688 \\
-Cropped region & C \: 0.5980 & \textbf{D \: 0.8061} \\
+A \;\; whole image + threshold & 0.5829 & 0.5751 \\
+B \;\; whole image + forced choice & 0.7688 & 0.7787 \\
+C \;\; cropped + threshold & 0.5980 & 0.5953 \\
+\textbf{D \;\; cropped + forced choice} & \textbf{0.8061} & \textbf{0.8012} \\
 \midrule
-\multicolumn{3}{l}{\emph{Controls}} \\
-A$'$ base-rate matched & 0.5770 & \\
-C$'$ base-rate matched & 0.5905 & \\
-Position-only (artifact) & 1.0000 & \\
+A$'$ base-rate matched & 0.5770 & 0.5775 \\
+C$'$ base-rate matched & 0.5905 & 0.6012 \\
+D-ext external contrast & 0.7621 & 0.7602 \\
+Position-only (artifact) & 1.0000 & 1.0000 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[t]
-\caption{Attribution. Paired bootstrap over 696 images, 10{,}000 resamples.}
+\caption{Attribution on the \textbf{test} split. Paired bootstrap over 296
+images, 10{,}000 resamples. Development values in the last column for
+comparison.}
 \label{tab:attrib}
 \centering
 \small
-\begin{tabular}{llcc}
+\begin{tabular}{lccc}
 \toprule
-\textbf{Contrast} & \textbf{Isolates} & $\Delta$ & \textbf{95\% CI} \\
+\textbf{Contrast (isolates)} & $\Delta$ & \textbf{95\% CI} & \textbf{Dev} \\
 \midrule
-B $-$ A & forced choice alone & $+0.1858$ & $[+0.1679, +0.2036]$ \\
-C $-$ A & region grounding alone & $+0.0150$ & $[+0.0023, +0.0278]$ \\
-D $-$ B & cropping $\mid$ forced ch. & $+0.0373$ & $[+0.0217, +0.0529]$ \\
-D $-$ C & forced ch. $\mid$ cropping & $+0.2081$ & $[+0.1908, +0.2249]$ \\
+B $-$ A \; forced choice & $+0.2036$ & $[+0.1781, +0.2288]$ & $+0.1858$ \\
+B $-$ A$'$ \; net of base rate & $+0.2012$ & $[+0.1756, +0.2269]$ & $+0.1918$ \\
+C $-$ A \; region grounding & $+0.0201$ & $[+0.0012, +0.0391]$ & $+0.0150$ \\
+D $-$ C \; forced ch.\ $\mid$ crop & $+0.2059$ & $[+0.1808, +0.2306]$ & $+0.2081$ \\
+D $-$ B \; crop $\mid$ forced ch. & $+0.0225$ & $[-0.0012, +0.0462]^{\ast}$ & $+0.0373$ \\
 \midrule
-\textbf{D $-$ A} & \textbf{both} & $\mathbf{+0.2232}$ & $\mathbf{[+0.2057, +0.2405]}$ \\
+\textbf{D $-$ A} \; \textbf{both} & $\mathbf{+0.2260}$ & $\mathbf{[+0.2001, +0.2514]}$ & $+0.2232$ \\
 \midrule
-\multicolumn{2}{l}{Interaction} & $+0.0223$ & --- \\
+Interaction & $+0.0023$ & --- & $+0.0223$ \\
 \bottomrule
+\multicolumn{4}{l}{\footnotesize $^{\ast}$ includes zero: this dev finding did not replicate.}
 \end{tabular}
 \end{table}
 
-Tables~\ref{tab:cells} and~\ref{tab:attrib} give the result. The combination
-improves on the baseline by $+0.2232$, with a confidence interval far from zero.
+Tables~\ref{tab:cells} and~\ref{tab:attrib} give the result. On the held-out
+test split, with every threshold frozen from the development fit, the combination
+improves on the baseline by $+0.2260$, closely matching the $+0.2232$ measured on
+development. \textbf{The headline effect is stable across splits}, and the
+baseline received no threshold tuned on the data it was scored on.
 
 The attribution is the substantive finding. \textbf{Forced choice alone accounts
-for $+0.1858$ of the $+0.2232$.} Region grounding alone accounts for $+0.0150$:
-its interval excludes zero, so the effect is real, but it is roughly twelve times
-smaller than the change to the decision rule. Cropping contributes most when
-combined with forced choice ($+0.0373$), and the two interact superadditively by
-$+0.0223$.
+for $+0.2036$ of the $+0.2260$} --- essentially all of it. Region grounding alone
+accounts for $+0.0201$, an interval whose lower bound is $+0.0012$: it clears
+zero, but only just.
 
-We do not claim region grounding is null, and we do not claim it is the
-mechanism. On an earlier 100-pair sample we reported it as null
-($+0.0100$, CI $[-0.0490, +0.0680]$); the full development set narrowed the
-interval until it cleared zero, and we withdrew the stronger claim. We report the
-withdrawal because a claim stated, tested at scale and retracted is evidence
-about the process that produced the remaining numbers.
+\subsubsection*{Two withdrawn claims}
+We report two claims that this work made and then retracted on stronger evidence.
+
+First, on an early 100-pair sample we reported region grounding as \emph{null}
+($+0.0100$, CI $[-0.0490, +0.0680]$). The full development set narrowed the
+interval until it cleared zero, and we withdrew that claim.
+
+Second, on the development set we found a positive interaction: cropping was
+worth a further $+0.0373$ once forced choice was in place
+(CI $[+0.0217, +0.0529]$), with superadditivity of $+0.0223$. \textbf{This did
+not replicate.} On test, D $-$ B is $+0.0225$ with CI $[-0.0012, +0.0462]$, which
+includes zero, and the interaction falls to $+0.0023$. On the test split the two
+changes behave additively, with forced choice supplying almost the entire effect.
+
+We report both withdrawals because a claim stated, tested and retracted is
+evidence about the process that produced the numbers we do keep. The surviving
+description is narrow: \emph{the decision rule is what matters}; region grounding
+contributes a small, marginal and split-dependent amount, and should not be
+presented either as null or as the mechanism.
 
 \subsection{Control 1: the base rate}
 
@@ -263,8 +289,8 @@ to $51.4\%$ of questions and Cell C to $37.5\%$, against a true rate of $50\%$.
 Cells A$'$ and C$'$ remove that asymmetry by choosing $\tau$ to match the known
 base rate instead of to maximise accuracy. \emph{Giving the baseline the prior
 widens the gap rather than closing it}: forced choice is worth
-$(+0.1858, +0.1918)$ on the whole image and $(+0.2081, +0.2157)$ on the crop,
-quoting the raw and base-rate-matched contrasts as a pair. Matching the base rate
+$(+0.2036, +0.2012)$ on the whole image and $(+0.2059, +0.2000)$ on the crop
+(test split), quoting the raw and base-rate-matched contrasts as a pair. Matching the base rate
 costs the threshold cells accuracy, because their accuracy-maximising threshold
 was deliberately unbalanced.
 
@@ -289,11 +315,11 @@ question against the opposite of \emph{gloomy}. The two never interact, so D-ext
 may answer \textsc{yes} to both halves of a pair --- and does, on 17\% of pairs.
 It therefore surrenders the pairing advantage completely.
 
-The list covers $91.9\%$ of questions and disagrees with AMBER's own negative on
-$44.1\%$ of pairs. On the matched covered subset, D-ext scores $0.7621$ against
-the baseline's $0.5794$: \textbf{$+0.1827$, CI $[+0.1649, +0.2002]$}. It trails
-full Cell D by $-0.0482$, which is the measured price of giving up the pairing
-advantage. Restricted further to questions where the external word \emph{differed}
+The list covers $94.0\%$ of test questions and disagrees with AMBER's own
+negative on $44.1\%$ of pairs. On the matched covered subset of the test split,
+D-ext scores $0.7602$ against the baseline's $0.5702$: \textbf{$+0.1901$, CI
+$[+0.1645, +0.2157]$}. It trails full Cell D by $-0.0428$, the measured price of
+giving up the pairing advantage. Restricted further to questions where the external word \emph{differed}
 from AMBER's, D-ext still beats the baseline. The gain does not depend on the
 benchmark's own contrast.
 
@@ -335,6 +361,14 @@ relation is reported per type and pooled, never pooled alone. Counting is
 unaffected: its labels are balanced, so accuracy is meaningful. Full figures are
 in Table~\ref{tab:pipeline}.
 
+Two of these deserve comment. Counting answers yes/no correctly $72\%$ of the
+time while producing the \emph{correct count} only $36\%$ of the time (mean
+absolute error $1.15$ objects): because roughly half the questions are gold-\textsc{no},
+a miscount often yields the right answer for the wrong reason. And the relation
+module barely exceeds its trivial baseline ($0.6056$ against $0.5851$). Both are
+off-the-shelf components included for system completeness, not contributions, and
+we report them as they stand.
+
 \begin{table}[t]
 \caption{Full pipeline, development split. Metrics differ by module because three
 question types have degenerate labels.}
@@ -346,9 +380,10 @@ question types have degenerate labels.}
 \textbf{Module} & \textbf{Metric} & \textbf{Value} & \textbf{Trivial} \\
 \midrule
 Attribute (Cell D) & accuracy & 0.8061 & 0.5000 \\
-Counting & accuracy & \textsc{see csv} & 0.5000 \\
-Existence & false-pos.\ rate & \textsc{see csv} & 1.0000$^{\dagger}$ \\
-Relation (pooled) & accuracy & \textsc{see csv} & 0.5859 \\
+Counting & accuracy & 0.7196 & 0.5000 \\
+Counting & exact count & 0.3632 & --- \\
+Existence & false-pos.\ rate & 0.1244 & 1.0000$^{\dagger}$ \\
+Relation (pooled) & accuracy & 0.6056 & 0.5851 \\
 \bottomrule
 \multicolumn{4}{l}{\footnotesize $^{\dagger}$ degenerate labels; accuracy not interpretable.}
 \end{tabular}
@@ -357,8 +392,9 @@ Relation (pooled) & accuracy & \textsc{see csv} & 0.5859 \\
 \section{Cost}
 
 The system uses 358M parameters across two open-weight models, no language model,
-and no paid API. Inference cost per question is dominated by detection; the
-attribute path without detection is markedly cheaper. Peak VRAM during two-model
+and no paid API. Inference cost per question is dominated by detection: $669$\,ms per counting
+question and $160$\,ms per relation question end to end, against $32$\,ms for an
+attribute question once detections are cached. Peak VRAM during two-model
 staging was $1.65$\,GiB of the $4.00$\,GiB available on the target laptop GPU,
 achieved by never holding both models resident. Monetary API cost is exactly
 zero.
@@ -377,6 +413,11 @@ images.
 \textbf{Detector fallback.} On $3.4\%$ of questions no object was detected and
 the crop was the whole image, making Cell D behave as Cell B there.
 
+\textbf{Region grounding's effect is marginal and may not be robust.} Its test
+interval clears zero by $+0.0012$, and the development interaction it participated
+in did not replicate. A further split could plausibly place it either side of
+zero.
+
 \textbf{Forced choice requires a competing hypothesis.} Where the benchmark
 supplies one, Cell D applies. Where it does not, an external contrast is needed,
 and for roughly a fifth of action attributes (\emph{swim}, \emph{jump},
@@ -391,18 +432,20 @@ with no training or fine-tuning; no OCR or scene text.
 \section{Conclusion}
 
 Region-grounded forced-choice attribute verification improves attribute
-hallucination detection by $+0.2232$ over the standard thresholding baseline. The
-ablation shows this is overwhelmingly attributable to the \emph{decision rule},
-not to region grounding: forced choice alone is worth $+0.1858$ and cropping
-alone $+0.0150$, with a small positive interaction. The gain survives removing
-the benchmark's own contrast. Along the way we document three construction
+hallucination detection by $+0.2260$ over the standard thresholding baseline on a
+held-out test split, with thresholds frozen from development. The ablation shows
+this is overwhelmingly attributable to the \emph{decision rule}, not to region
+grounding: forced choice alone is worth $+0.2036$ and cropping alone $+0.0201$,
+and the positive interaction we measured on development did not replicate. The
+gain survives removing the benchmark's own contrast. Along the way we document three construction
 artifacts in AMBER that admit perfect image-independent strategies, and show that
 the question types supporting our result are free of them.
 
 The practical implication is narrow and useful: when adding an attribute tool to
 a decompose-and-verify pipeline, the change that pays is asking the model to
 choose between competing attributes rather than to judge one in isolation.
-Localisation helps, but far less than is commonly assumed.
+Localisation helps, but far less than is commonly assumed --- and by an amount
+small enough that we would not rely on it without further replication.
 
 \begin{thebibliography}{9}
 \bibitem{yuksekgonul2023} M.~Yuksekgonul et al., ``When and why vision-language
