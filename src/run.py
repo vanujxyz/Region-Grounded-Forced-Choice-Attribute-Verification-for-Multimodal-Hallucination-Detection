@@ -386,6 +386,161 @@ def summarise_scores(scores: list[float]) -> dict[str, Any]:
     }
 
 
+# D-044: the M4 module pass detects at this threshold so the FPR sweep can
+# filter up from one cache. Lower than detector.threshold (0.10) by design.
+MODULE_DETECT_THRESHOLD = 0.05
+FPR_SWEEP = (0.05, 0.10, 0.20, 0.30)
+
+
+def _module_cfg(cfg: dict) -> dict:
+    """Config copy whose detector threshold is low enough for the FPR sweep."""
+    import copy
+
+    out = copy.deepcopy(cfg)
+    out["detector"]["threshold"] = MODULE_DETECT_THRESHOLD
+    return out
+
+
+def _detect_all(pairs_of, cfg: dict, no_cache: bool = False):
+    """Detect every (image, phrase) once, cached. Returns {key: detections}."""
+    from PIL import Image
+
+    from src.modules.crop_cache import CropCache
+
+    mcfg = _module_cfg(cfg)
+    cache = CropCache(mcfg, enabled=not no_cache)
+    images_dir = paths()["images"]
+    vram = VramTracker()
+
+    wanted, out = [], {}
+    for image, phrase in pairs_of:
+        key = CropCache.key(image, phrase)
+        if key in out:
+            continue
+        hit = cache.get(image, phrase)
+        if hit is not None:
+            out[key] = hit.get("detections", [])
+        else:
+            out[key] = None
+            wanted.append((image, phrase))
+
+    if wanted:
+        from src.modules.detector import Detector
+
+        with Detector(mcfg) as det:
+            vram.mark("detector_loaded")
+            for image, phrase in wanted:
+                img = Image.open(images_dir / image).convert("RGB")
+                c = det.crop_region(img, phrase)
+                out[CropCache.key(image, phrase)] = [list(d) for d in c.detections]
+                cache.put(image, phrase, c.box, c.fell_back, c.detector_score, c.detections)
+                vram.sample()
+            vram.mark("detector_stage_end")
+    cache.save()
+
+    missing = [k for k, v in out.items() if v is None]
+    if missing:
+        raise RuntimeError(f"{len(missing)} regions never detected, e.g. {missing[:3]}")
+    return out, cache.stats(), vram.as_dict()
+
+
+def run_existence(split: str, limit: int | None, cfg: dict, no_cache: bool = False) -> dict:
+    """TRD §8 under the D-044 metric: false-positive rate, not accuracy."""
+    from src.modules.existence import parse_existence_questions
+    from src.modules.existence import predict as ex_predict
+
+    images = set(get_split(split))
+    qs = [q for q in parse_existence_questions() if q.image in images]
+    if limit:
+        qs = qs[:limit]
+    if not qs:
+        raise RuntimeError(f"no existence questions for split={split}")
+
+    dets, cache_stats, vram = _detect_all(((q.image, q.obj) for q in qs), cfg, no_cache)
+    thr = float(cfg["detector"]["threshold"])
+
+    def at(threshold):
+        return lambda i, o: [d for d in dets[f"{i}|{o}"] if d[4] >= threshold]
+
+    records = ex_predict(qs, at(thr), threshold=thr,
+                         confidence_k=float(cfg["attribute"]["confidence_k"]))
+
+    n = len(qs)
+    sweep = {}
+    for t in FPR_SWEEP:
+        fp = sum(1 for q in qs if any(d[4] >= t for d in dets[f"{q.image}|{q.obj}"]))
+        sweep[f"{t:.2f}"] = {"false_positives": fp, "n": n, "fpr": fp / n,
+                             "accuracy_equivalent": 1.0 - fp / n}
+
+    golds = {r["gold"] for r in records}
+    return {
+        "records": records, "n_questions": n,
+        "all_gold_no": golds == {"no"},
+        "fpr_sweep": sweep,
+        "reported_threshold": thr,
+        "trivial_always_no_accuracy": 1.0,
+        "trivial_baseline_note": "BENCHMARK ARTIFACT: all 4924 golds are no (D-042)",
+        "crop_cache": cache_stats, "vram": vram,
+        "tau": "NOT_APPLICABLE", "ties": "NOT_APPLICABLE",
+    }
+
+
+def run_counting(split: str, limit: int | None, cfg: dict, no_cache: bool = False) -> dict:
+    """TRD §9. Unaffected by D-042: number gold is balanced 1036/1036."""
+    from src.modules.counting import CountConfusion, load_number_questions
+    from src.modules.counting import predict as ct_predict
+
+    images = set(get_split(split))
+    qs = [q for q in load_number_questions() if q.image in images]
+    if limit:
+        qs = qs[:limit]
+    if not qs:
+        raise RuntimeError(f"no number questions for split={split}")
+
+    dets, cache_stats, vram = _detect_all(((q.image, q.obj) for q in qs), cfg, no_cache)
+    thr = float(cfg["detector"]["threshold"])
+    conf = CountConfusion()
+    records = ct_predict(qs, lambda i, o: [d for d in dets[f"{i}|{o}"] if d[4] >= thr], conf)
+    return {
+        "records": records, "n_questions": len(qs),
+        "count_confusion": conf.as_dict(),
+        "reported_threshold": thr,
+        "crop_cache": cache_stats, "vram": vram,
+        "tau": "NOT_APPLICABLE", "ties": "NOT_APPLICABLE",
+    }
+
+
+def run_relation(split: str, limit: int | None, cfg: dict) -> dict:
+    """TRD §10 under D-045: tau fitted on the pooled set; reported per type too."""
+    from src.modules.attribute import AttributeScorer, fit_tau
+    from src.modules.relation import parse_relation_questions, score_all
+    from src.modules.relation import predict as rel_predict
+
+    images = set(get_split(split))
+    qs = [q for q in parse_relation_questions() if q.image in images]
+    if limit:
+        qs = qs[:limit]
+    if not qs:
+        raise RuntimeError(f"no relation questions for split={split}")
+
+    images_dir = paths()["images"]
+    vram = VramTracker()
+    with AttributeScorer(cfg) as scorer:
+        vram.mark("scorer_loaded")
+        scored = score_all(scorer, qs, images_dir)
+        tau, fit_acc = fit_tau(scored)
+        records = rel_predict(scorer, qs, images_dir, tau)
+        vram.mark("scorer_stage_end")
+
+    return {
+        "records": records, "n_questions": len(qs),
+        "tau": {"tau": tau, "selection": "accuracy_maximising", "fit_accuracy": fit_acc,
+                "fit_n": len(scored), "fit_split": split, "protocol": "fit-on-eval",
+                "fit_scope": "pooled; per-type fitting impossible, each type is constant"},
+        "ties": "NOT_APPLICABLE", "vram": vram.as_dict(),
+    }
+
+
 def run_position_only(split: str, limit: int | None) -> dict:
     from src.modules.position_baseline import predict
 
@@ -438,6 +593,61 @@ def _report(name: str, result: dict) -> dict:
     return m
 
 
+def _report_module(name: str, result: dict) -> None:
+    from src.eval.metrics import accuracy as _acc
+    from src.eval.metrics import compute_metrics
+
+    m = compute_metrics(result["records"])
+    o = m["overall"]
+    print()
+    print(f"=== MODULE {name.upper()} ===")
+    print(f"  questions        : {o['n']}")
+    print(f"  accuracy         : {o['accuracy']}")
+    print(f"  precision        : {o['precision']}")
+    print(f"  recall           : {o['recall']}")
+    print(f"  f1               : {o['f1']}")
+
+    if name == "existence":
+        print(f"  *** all gold no  : {result['all_gold_no']} -> accuracy is DEGENERATE")
+        print(f"  *** {result['trivial_baseline_note']}")
+        print(f"  *** trivial always-no accuracy: {result['trivial_always_no_accuracy']}")
+        print("  PRIMARY METRIC - false-positive rate (D-044):")
+        for t, v in result["fpr_sweep"].items():
+            mark = " <- reported" if abs(float(t) - result["reported_threshold"]) < 1e-9 else ""
+            print(f"      thr {t}: FPR {v['fpr']:.4f}  ({v['false_positives']}/{v['n']})"
+                  f"  acc-equiv {v['accuracy_equivalent']:.4f}{mark}")
+
+    if name == "counting":
+        c = result["count_confusion"]
+        print(f"  exact count match: {c['exact_match_rate']:.4f}")
+        print(f"  mean abs error   : {c['mean_abs_error']:.4f}")
+        print(f"  predicted zero   : {c['predicted_zero_rate']:.4f}")
+
+    if name == "relation":
+        print(f"  tau              : {result['tau']}")
+        by = {}
+        for r in result["records"]:
+            by.setdefault(r["qtype"], []).append(r)
+        print("  D-045 per type (each degenerate) and pooled:")
+        for qt, rs in sorted(by.items()):
+            golds = sorted({x["gold"] for x in rs})
+            triv = 1.0 if len(golds) == 1 else "n/a"
+            print(f"      {qt:26s} n={len(rs):4d} acc={_acc(rs):.4f} "
+                  f"gold={golds} trivial-baseline={triv}")
+        yes = sum(1 for r in result["records"] if r["gold"] == "yes")
+        print(f"      POOLED                     n={o['n']:4d} acc={o['accuracy']:.4f} "
+              f"always-yes={yes / o['n']:.4f}")
+        print("      (never report pooled alone -- D-045)")
+
+    if result.get("crop_cache") not in (None, "NOT_APPLICABLE"):
+        cc = result["crop_cache"]
+        print(f"  crop cache       : {cc['hits']} hits / {cc['misses']} misses, "
+              f"{cc['entries']} entries")
+    v = result.get("vram")
+    if isinstance(v, dict) and v.get("available"):
+        print(f"  VRAM peak used   : {v['peak_used_gib']:.3f} of {v['total_gib']:.3f} GiB")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="src.run")
     ap.add_argument(
@@ -465,6 +675,20 @@ def main(argv: list[str] | None = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    if args.module in ("existence", "counting", "relation"):
+        if args.module == "existence":
+            result = run_existence(args.split, args.limit, cfg, args.no_cache)
+        elif args.module == "counting":
+            result = run_counting(args.split, args.limit, cfg, args.no_cache)
+        else:
+            result = run_relation(args.split, args.limit, cfg)
+        run_id = f"{args.module}_{args.split}_{stamp}"
+        _report_module(args.module, result)
+        write_jsonl(result["records"], out_dir / f"{run_id}.jsonl")
+        write_manifest(run_id, cfg, args,
+                       {k: v for k, v in result.items() if k != "records"})
+        return 0
 
     if args.module == "position-only":
         result = run_position_only(args.split, args.limit)

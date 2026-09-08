@@ -111,9 +111,11 @@ Number questions do **not** pair reliably (1,506 singletons, 283 pairs), so numb
 
 Build these so the capstone demo is a complete system, but do not claim novelty for them:
 
-- **Existence checker** — OWLv2 detection, thresholded. Evaluated on the 4,924 `discriminative-hallucination` questions.
-- **Counting checker** — OWLv2 detection, NMS de-duplication, integer comparison. Evaluated on the 2,072 `number` questions.
-- **Relation checker** — off-the-shelf. Evaluated on the 1,664 relation questions.
+- **Existence checker** — OWLv2 detection, thresholded. Evaluated on the 4,924 `discriminative-hallucination` questions by **false-positive rate, not accuracy**. All 4,924 ask about *absent* objects (gold is `no` for every one), so accuracy is degenerate: answering "no" always scores 1.0000 without opening an image. The meaningful quantity is how often the detector claims an absent object is present, swept over detector thresholds 0.05 / 0.10 / 0.20 / 0.30. The always-"no" baseline is printed beside every figure and labelled a benchmark artifact. See `docs/DECISIONS.md` D-042 and D-044.
+- **Counting checker** — OWLv2 detection, NMS de-duplication, integer comparison. Evaluated on the 2,072 `number` questions. **Unaffected by the above**: number gold is exactly balanced, 1036 `yes` / 1036 `no`, so accuracy is meaningful here.
+- **Relation checker** — off-the-shelf. Evaluated on the 1,664 relation questions, reported **per type and pooled, always labelled**. Each type alone is degenerate: `discriminative-relation` is all-`yes` (975) and `relation` is all-`no` (689), so each has a trivial strategy scoring 1.0000. Pooled, always-`yes` scores 0.5859. Never reported pooled alone. See D-045.
+
+**Benchmark artifacts.** AMBER contains three independent construction artifacts that let trivial strategies score perfectly: attribute pair id ordering (D-009), all-negative existence gold, and per-type constant relation gold (D-042). The three question types this project's contribution rests on — state, action and number — are all exactly balanced and free of them. Finding and reporting these is treated as a contribution in its own right (D-043).
 - **Claim splitter** — spaCy dependency parse, used by the demo to handle free-text input.
 
 ## 8. Rules the build must follow

@@ -1199,3 +1199,72 @@ has been applied and no number has been invented.
 
 `counting.py` is unaffected — number questions are exactly balanced (1036/1036) —
 and is ready to run.
+
+### D-043 — AMBER contains three independent construction artifacts
+
+Owner ruling: this is a contribution in its own right and belongs in the paper.
+
+Three separate properties of AMBER's construction let a trivial strategy score
+perfectly without looking at an image. All three were found by this project,
+reported rather than exploited, and each is guarded by tests.
+
+| # | artifact | trivial strategy | its score |
+|---|---|---|---|
+| 1 | **Attribute pair id ordering** (D-009). In all 2,774 clean pairs the true attribute holds the lower question id, and the ids are always adjacent. | answer "yes" to the lower id | **1.0000** |
+| 2 | **All-negative existence gold** (D-042). All 4,924 `discriminative-hallucination` questions ask about absent objects. | answer "no" always | **1.0000** |
+| 3 | **Per-type constant relation gold** (D-042). `discriminative-relation` is all-yes (975); `relation` is all-no (689). | answer "yes" / "no" respectively | **1.0000** each |
+
+**The pattern matters as much as the individual findings.**
+
+| qtype | balance | artifact? | scope |
+|---|---|---|---|
+| discriminative-attribute-state | 2382 / 2382 | none | **contribution** |
+| discriminative-attribute-action | 396 / 396 | none | **contribution** |
+| discriminative-attribute-number | 1036 / 1036 | none | **contribution** |
+| discriminative-hallucination | 0 / 4924 | all-negative | supporting module |
+| discriminative-relation | 975 / 0 | all-positive | supporting module |
+| relation | 0 / 689 | all-negative | supporting module |
+
+**The three question types this project's contribution rests on — state, action
+and number — are all exactly balanced and free of these artifacts.** All three
+degenerate types fall in the supporting-module scope, which PRD §3 and §7 already
+disclaim novelty for. The headline result is untouched by D-042.
+
+For the paper: benchmark artifacts that let trivial strategies score perfectly,
+found and reported rather than exploited. Artifact 1 additionally has a
+falsification (D-023): permuting the ids collapses the position-only baseline to
+0.41 while Cells A and D are bit-identical.
+
+### D-044 — existence metric: false-positive rate, not accuracy (owner option (a))
+
+TRD §8's "fit on dev" is unrunnable on all-negative data (D-042). Replaced by:
+
+- **Primary metric: false-positive rate.** Of 4,924 questions about objects that
+  are *absent*, how often does the detector claim presence. This is what the
+  questions actually measure, and it is a hallucination rate — arguably more
+  informative than accuracy would have been.
+- **Threshold 0.10 from config, NOT fitted.** Fitting on all-negative data is
+  meaningless and is not attempted.
+- **The always-"no" baseline of 1.0000 is printed beside every existence number**,
+  explicitly labelled a benchmark artifact.
+- **FPR is swept over detector thresholds 0.05 / 0.10 / 0.20 / 0.30** so the
+  headline number is not hostage to one arbitrary cutoff.
+
+**Implementation note.** The sweep needs detections down to 0.05, but the M3
+attribute cache was built at `detector.threshold = 0.10` and
+`CropCache.detections_at` refuses to serve a threshold below the one it was built
+at. The M4 module pass therefore runs detection at **0.05** into its own cache
+file (a different fingerprint, so no stale mixing), and every reported threshold
+filters up from it. `accuracy` is still reported for completeness but is labelled
+degenerate.
+
+### D-045 — relation reported per type AND pooled, always labelled
+
+`discriminative-relation` (975, all yes) and `relation` (689, all no) are each
+degenerate. Owner ruling: report **both separately, each with its degenerate
+baseline printed, plus the pooled figure with always-yes = 0.5859 stated
+alongside. Never report pooled alone.**
+
+Tau is fitted on the **pooled** relation set, which is the only relation set
+containing both classes (975 yes / 689 no). Fitting per type is impossible.
+This is recorded because TRD §10 is silent on it.

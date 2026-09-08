@@ -12,3 +12,6 @@ data/amber_repo/
 
 # Local HF cache when HF_HOME is not set
 .hf_cache/
+
+# Detection cache (regenerable; keyed by detector settings)
+results/cache/
