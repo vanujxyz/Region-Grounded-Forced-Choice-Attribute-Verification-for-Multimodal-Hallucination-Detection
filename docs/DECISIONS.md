@@ -1268,3 +1268,97 @@ alongside. Never report pooled alone.**
 Tau is fitted on the **pooled** relation set, which is the only relation set
 containing both classes (975 yes / 689 no). Fitting per type is impossible.
 This is recorded because TRD §10 is silent on it.
+
+### D-046 — M4 module results, full dev
+
+All three run once each. Detection shared through one cache at threshold 0.05
+(D-044), so every reported threshold filters up from a single pass.
+
+**Counting** — 1,462 questions, labels balanced, accuracy meaningful.
+
+| metric | value |
+|---|---|
+| accuracy | **0.7196** |
+| precision / recall / F1 | 0.8023 / 0.5828 / 0.6751 |
+| **exact count match** | **0.3632** |
+| mean absolute count error | 1.1464 |
+| predicted zero objects | 0.0547 |
+
+**The gap between 0.7196 and 0.3632 is the honest headline here.** The module
+answers yes/no correctly 72% of the time while counting correctly only 36% of the
+time. Because roughly half the questions are gold-`no`, a miscount frequently
+produces the right answer for the wrong reason. Both numbers go in Table 3;
+accuracy alone would flatter the module.
+
+**Existence** — 3,441 questions, all gold `no` (D-042). Accuracy is degenerate and
+is reported only for completeness; the primary metric is the false-positive
+(hallucination) rate.
+
+| detector threshold | FPR | false positives | accuracy-equivalent |
+|---|---|---|---|
+| 0.05 | 0.2581 | 888 / 3441 | 0.7419 |
+| **0.10 (reported)** | **0.1244** | **428 / 3441** | 0.8756 |
+| 0.20 | 0.0450 | 155 / 3441 | 0.9550 |
+| 0.30 | 0.0206 | 71 / 3441 | 0.9794 |
+
+Trivial always-`no` baseline: **1.0000**. The FPR sweep is what carries
+information; no threshold was fitted.
+
+Supporting evidence from the cache: **2,550 of 3,435 existence regions produced
+zero detections at 0.05**, i.e. the detector correctly finds nothing for an absent
+object 74% of the time.
+
+**Relation** — 1,169 questions, tau fitted on the pooled set (the only relation
+set with both classes), reported per type and pooled per D-045.
+
+| subset | n | gold | accuracy | trivial baseline |
+|---|---|---|---|---|
+| discriminative-relation | 684 | all `yes` | 0.8728 | **1.0000** |
+| relation | 485 | all `no` | 0.2289 | **1.0000** |
+| **POOLED** | 1169 | mixed | **0.6056** | always-yes **0.5851** |
+
+**The relation module barely beats its trivial baseline**: 0.6056 against 0.5851,
+a margin of 0.0205. It predicts `yes` far too often, which is why it scores 0.8728
+on the all-`yes` type and 0.2289 on the all-`no` one. This module is off-the-shelf
+by design (PRD §7) and is not claimed as a contribution; the number is reported as
+it stands.
+
+### D-047 — a speculated cause, refuted by the data
+
+The existence stage took 2h45m of wall clock against a ~44 min estimate. I
+speculated the cause was NMS cost: absent objects producing many low-confidence
+boxes at threshold 0.05, against an O(n²) Python NMS.
+
+**The cache refutes this.** Detections per region at 0.05:
+
+| module | mean | median | regions with zero detections |
+|---|---|---|---|
+| counting | 3.14 | 2 | 36 / 1263 |
+| existence | **0.59** | **0** | **2550 / 3435** |
+
+Existence regions yield *fewer* detections, so NMS load was lower, not higher.
+Per-detection cost is the same ~0.77s in both stages. **The entire overrun was
+host sleep**, and the original estimate was correct.
+
+Recorded because the speculation was stated before it was checked. The hypothesis
+was wrong and the measurement settled it.
+
+### D-048 — two table-construction errors, caught before publication
+
+Both found by inspecting the first Table 3/4 output rather than trusting it.
+
+1. **Table 3 used the wrong Cell D run.** `newest()` selected the newest matching
+   file by name, which was a 200-record cache-verification run, not the
+   3,858-record full-dev run — reporting attribute accuracy as 0.8600 (the
+   limit-100 figure) instead of **0.8061**. Fixed by pinning the expected record
+   count and raising if no full-dev run exists, rather than silently degrading.
+
+2. **Table 4 would have reported a contaminated timing.** Existence stage elapsed
+   time spans a host sleep, so it measures nothing. It is now reported as
+   `NOT_COMPUTED` with the reason attached, rather than as a clean per-question
+   cost. Counting (668.9 ms/question) and relation (160.0 ms/question) are clean
+   and are reported.
+
+The `newest()` failure mode is the same one that broke `test_tables.py` during M3
+(fixed there by matching on record count). It recurred here in a different script
+because the fix was local. Both call sites now pin the expected count.

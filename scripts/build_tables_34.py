@@ -27,12 +27,18 @@ RAW = ROOT / "results" / "raw"
 TABLES = ROOT / "results" / "tables"
 
 
-def newest(pattern: str):
+# The full development attribute run. Pinned explicitly: selecting "the newest
+# matching file" silently picked up a 200-record cache-verification run instead
+# of the 3,858-record full-dev run.
+FULL_DEV_N = 3858
+
+
+def newest(pattern: str, expect_n: int | None = None):
     hits = sorted(glob.glob(str(RAW / pattern)), reverse=True)
     for path in hits:
         with open(path, encoding="utf-8") as fh:
             recs = [json.loads(line) for line in fh]
-        if recs:
+        if recs and (expect_n is None or len(recs) == expect_n):
             return recs, Path(path).name
     return None, None
 
@@ -84,7 +90,12 @@ def build_table3():
         })
 
     # --- attribute: Cell D, the proposed method, split by sub-type ---
-    D, dfile = newest("attribute_D_dev_*.jsonl")
+    D, dfile = newest("attribute_D_dev_*.jsonl", FULL_DEV_N)
+    if D is None:
+        raise SystemExit(
+            f"no full-dev Cell D run with {FULL_DEV_N} records found; refusing to "
+            "build Table 3 from a partial run"
+        )
     if D:
         for sub, qt in (("state", "discriminative-attribute-state"),
                         ("action", "discriminative-attribute-action")):
@@ -139,6 +150,17 @@ def build_table3():
     return rows, out
 
 
+# Measured module wall-clock, from the M4 run log. Existence is deliberately
+# NOT_COMPUTED: the machine slept during that stage, so its elapsed time is not a
+# measurement of anything. A contaminated timing is not reported as a clean one.
+MODULE_WALLCLOCK = {
+    "counting": {"seconds": 978, "questions": 1462, "clean": True},
+    "existence": {"seconds": None, "questions": 3441, "clean": False,
+                  "why": "host slept mid-stage; elapsed time is not a measurement"},
+    "relation": {"seconds": 187, "questions": 1169, "clean": True},
+}
+
+
 def build_table4():
     """D5: parameter count, wall-clock per query, API cost = 0."""
     man = manifest_for("attribute_D") or {}
@@ -164,22 +186,31 @@ def build_table4():
         })
 
     total_params = sum(v for v in PARAMS_M.values())
-    per_query = {}
-    for name, pattern in (("attribute (Cell D)", "attribute_D_dev_*.jsonl"),
-                          ("attribute (Cell A)", "attribute_A_dev_*.jsonl"),
-                          ("counting", "counting_dev_*.jsonl"),
-                          ("existence", "existence_dev_*.jsonl"),
-                          ("relation", "relation_dev_*.jsonl")):
-        recs, _ = newest(pattern)
-        per_query[name] = mean_runtime_ms(recs) if recs else NOT_COMPUTED
-
-    for name, ms in per_query.items():
+    # Attribute cells record per-question timing directly.
+    for name, pattern in (("attribute (Cell D, crop+forced choice)", "attribute_D_dev_*.jsonl"),
+                          ("attribute (Cell A, whole image+threshold)", "attribute_A_dev_*.jsonl")):
+        recs, src = newest(pattern, FULL_DEV_N)
         rows.append({
             "component": f"wall-clock: {name}",
-            "model_id": "-", "revision": "-",
-            "parameters_millions": "-",
+            "model_id": "-", "revision": "-", "parameters_millions": "-",
             "api_cost_usd": 0.0,
-            "notes": f"mean_ms_per_question={ms}",
+            "notes": (f"mean_ms_per_question={mean_runtime_ms(recs) if recs else NOT_COMPUTED}"
+                      f" (scoring only, detection cached); source={src}"),
+        })
+
+    # The other modules are timed from stage wall-clock.
+    for name, info in MODULE_WALLCLOCK.items():
+        if info["clean"]:
+            ms = 1000.0 * info["seconds"] / info["questions"]
+            note = (f"mean_ms_per_question={ms:.1f} "
+                    f"({info['seconds']}s / {info['questions']} questions, "
+                    "includes detection)")
+        else:
+            note = f"mean_ms_per_question={NOT_COMPUTED} -- {info['why']}"
+        rows.append({
+            "component": f"wall-clock: {name}",
+            "model_id": "-", "revision": "-", "parameters_millions": "-",
+            "api_cost_usd": 0.0, "notes": note,
         })
 
     rows.append({

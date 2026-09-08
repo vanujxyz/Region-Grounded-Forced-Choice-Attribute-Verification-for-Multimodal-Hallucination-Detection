@@ -1,0 +1,9 @@
+component,model_id,revision,parameters_millions,api_cost_usd,notes
+detector (localisation),google/owlv2-base-patch16-ensemble,cfd3195ba4ea9592eec887ded089f4c08eff231d,154.966792,0.0,"open weights, zero-shot, run locally"
+scorer (attribute verification),google/siglip-base-patch16-224,7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed,203.16,0.0,"open weights, zero-shot, run locally"
+"wall-clock: attribute (Cell D, crop+forced choice)",-,-,-,0.0,"mean_ms_per_question=32.12849681169001 (scoring only, detection cached); source=attribute_D_dev_20260907T170000Z.jsonl"
+"wall-clock: attribute (Cell A, whole image+threshold)",-,-,-,0.0,"mean_ms_per_question=32.39885984942053 (scoring only, detection cached); source=attribute_A_dev_20260907T162523Z.jsonl"
+wall-clock: counting,-,-,-,0.0,"mean_ms_per_question=668.9 (978s / 1462 questions, includes detection)"
+wall-clock: existence,-,-,-,0.0,mean_ms_per_question=NOT_COMPUTED -- host slept mid-stage; elapsed time is not a measurement
+wall-clock: relation,-,-,-,0.0,"mean_ms_per_question=160.0 (187s / 1169 questions, includes detection)"
+TOTAL,OWLv2-base + SigLIP-base,-,358.126792,0.0,"no LLM, no paid API; peak VRAM 1.654 GiB of 4.00; GPU=NVIDIA GeForce RTX 3050 Laptop GPU"

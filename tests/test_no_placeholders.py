@@ -26,8 +26,25 @@ METRIC_TOKENS = (
 FORBIDDEN = ("", "null", "None", "nan", "N/A", "TODO", "PLACEHOLDER", "-")
 
 
+# Columns that hold a metric but whose name shares no token with METRIC_TOKENS.
+METRIC_EXACT = {"primary_value", "best_trivial_baseline", "fpr"}
+
+# Names that must NOT be treated as metrics even though a token appears inside
+# a longer word. "labels_degenerate" contains "rate" as a substring of
+# "degenerate"; it is a boolean flag. Substring matching caused a false failure,
+# so matching is now on underscore-separated tokens.
 def _is_metric_column(name: str) -> bool:
-    return any(tok in name.lower() for tok in METRIC_TOKENS)
+    low = name.lower()
+    if low in METRIC_EXACT:
+        return True
+    tokens = set(low.split("_"))
+    for tok in METRIC_TOKENS:
+        if "_" in tok:
+            if low == tok:
+                return True
+        elif tok in tokens:
+            return True
+    return False
 
 
 # Two distinct sentinels, deliberately not collapsed into one:
@@ -178,3 +195,16 @@ def test_forced_choice_manifests_declare_tau_not_applicable():
     if seen == 0:
         _pt = __import__("pytest")
         _pt.skip("no forced-choice manifest present yet")
+
+
+def test_metric_column_matcher_uses_token_boundaries():
+    """Regression: 'labels_degenerate' must not match on 'degene-RATE-'."""
+    assert _is_metric_column("fallback_rate")
+    assert _is_metric_column("accuracy")
+    assert _is_metric_column("ci_low")
+    assert _is_metric_column("mean_runtime_ms")
+    assert _is_metric_column("primary_value")
+    assert not _is_metric_column("labels_degenerate")
+    assert not _is_metric_column("module")
+    assert not _is_metric_column("notes")
+    assert not _is_metric_column("model_id")
