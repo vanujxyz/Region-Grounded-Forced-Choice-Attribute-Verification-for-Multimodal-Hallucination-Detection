@@ -201,6 +201,33 @@ def _qtype_map() -> dict[int, str]:
     return {q.id: q.qtype for q in load_questions()}
 
 
+def frozen_tau_from_dev(cell: str) -> tuple[float, dict]:
+    """The tau fitted on dev for ``cell``, for use on the test split.
+
+    TRD §16 forbids fitting any threshold on the test split. This reads the tau
+    from the most recent dev manifest and refuses to proceed if there is none --
+    the test split is never a source of a fitted parameter.
+    """
+    import glob as _glob
+
+    raw = paths()["results_raw"]
+    hits = sorted(_glob.glob(str(raw / f"attribute_{cell}_dev_*.manifest.json")), reverse=True)
+    for path in hits:
+        with open(path, encoding="utf-8") as fh:
+            man = json.load(fh)
+        tau_block = man.get("tau")
+        if isinstance(tau_block, dict) and "tau" in tau_block:
+            return float(tau_block["tau"]), {
+                **tau_block,
+                "frozen_from": Path(path).name,
+                "protocol": "frozen-from-dev (NOT fitted on test)",
+            }
+    raise RuntimeError(
+        f"no dev manifest with a fitted tau found for cell {cell}. "
+        "Run the cell on dev first; tau is never fitted on the test split."
+    )
+
+
 def run_attribute_cell(
     cell: str, split: str, limit: int | None, cfg: dict, no_cache: bool = False
 ) -> dict:
@@ -301,7 +328,11 @@ def run_attribute_cell(
         coverage = CoverageLog()
 
         tau = None
-        if decision_of(cell) == "threshold":
+        if decision_of(cell) == "threshold" and split == "test":
+            # TRD §16: never fit a threshold on the test split.
+            tau, tau_info = frozen_tau_from_dev(cell)
+            tau_info["applied_split"] = "test"
+        elif decision_of(cell) == "threshold":
             # TRD §7: tau fitted on dev by sweeping. See D-012 on the --limit case.
             fit_data: list[tuple[float, str]] = []
             for p in pairs:
@@ -321,6 +352,8 @@ def run_attribute_cell(
             tau_info["fit_split"] = split
             tau_info["fit_limit"] = limit
             tau_info["protocol"] = "fit-on-eval"
+        if decision_of(cell) == "threshold" and tau is None:
+            raise RuntimeError(f"cell {cell} has no tau after fitting/freezing")
 
         for p in pairs:
             t0 = time.perf_counter()
