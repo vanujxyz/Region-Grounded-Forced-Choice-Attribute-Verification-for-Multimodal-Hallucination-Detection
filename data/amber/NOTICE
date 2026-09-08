@@ -1,0 +1,15 @@
+The files in this directory are redistributed from the AMBER benchmark:
+
+    AMBER: An LLM-free Multi-dimensional Benchmark for MLLMs Hallucination
+    Evaluation
+    Junyang Wang et al., 2023
+    https://github.com/junyangwang0410/AMBER
+
+    Copyright 2023 Alibaba X-PLUG Team. All rights reserved.
+    Licensed under the Apache License, Version 2.0 (see LICENSE in this
+    directory).
+
+They are included unmodified so the evaluation is reproducible without a
+separate download. The AMBER images are NOT redistributed here: they are a
+manual download from the Google Drive link in the upstream README, and this
+repository gitignores data/images/.
