@@ -86,7 +86,25 @@ characters. The HuggingFace cache will need a short path (e.g. `C:\hf`) at M1.
 
 ## Tuning log
 
-No tuning has been performed. No threshold has been fitted. No model has been run.
+**EMPTY, as of project completion (M0-M5).**
+
+No threshold, padding, prompt template, NMS setting or constant was ever adjusted
+to improve a reported number. Every cell was run **once** per split. The two
+thresholds that exist (tau for cells A/C and their base-rate-matched variants)
+are fitted by an exhaustive sweep on the development split and, on test, are
+frozen from that fit -- recorded in each test manifest as
+`frozen-from-dev (NOT fitted on test)`.
+
+Two claims were withdrawn on stronger evidence, and both are reported rather than
+quietly corrected:
+
+- **D-030 -> D-038**: "region grounding alone contributes nothing measurable",
+  asserted on 100 pairs, falsified by the full dev set (+0.0150,
+  CI [+0.0023, +0.0278]).
+- **D-041 -> D-050**: the positive interaction (+0.0223 on dev) did not replicate
+  on test (+0.0023; D-B CI [-0.0012, +0.0462] includes zero).
+
+Neither withdrawal was accompanied by a change to the method.
 
 ---
 
