@@ -30,6 +30,8 @@ from src.eval.bootstrap import (
 )
 from src.eval.metrics import compute_metrics, confusion
 
+NEWLINE = chr(10)
+
 CELLS = ["A", "B", "C", "D", "Ap", "Cp"]
 LABEL = {
     "A": "Whole image + threshold (baseline)",
@@ -62,12 +64,42 @@ CONTRASTS = [
 ]
 
 
-def load_cell(cell: str, split: str):
-    hits = sorted(glob.glob(str(ROOT / "results" / "raw" / f"attribute_{cell}_{split}_*.jsonl")))
-    if not hits:
+def _available(split: str) -> str:
+    """Every raw run for this split, with its record count."""
+    lines = []
+    for c in CELLS:
+        pat = str(ROOT / "results" / "raw" / f"attribute_{c}_{split}_*.jsonl")
+        for path in sorted(glob.glob(pat)):
+            with open(path, encoding="utf-8") as fh:
+                k = sum(1 for _ in fh)
+            lines.append(f"    {c:5s} {k:5d} records  {Path(path).name}")
+    return NEWLINE.join(lines) or "    (none)"
+
+
+def load_cell(cell: str, split: str, n: int | None = None):
+    """Newest run for this cell with exactly ``n`` records.
+
+    Taking simply "the newest file" is wrong once runs of different sizes exist:
+    it silently pairs a full-dev Cell A with a limit-100 Cell D. The downstream
+    id-set check catches that, but the fix belongs here.
+    """
+    pat = str(ROOT / "results" / "raw" / f"attribute_{cell}_{split}_*.jsonl")
+    candidates = []
+    for path in sorted(glob.glob(pat), reverse=True):
+        with open(path, encoding="utf-8") as fh:
+            recs = [json.loads(line) for line in fh]
+        if not recs:
+            continue
+        if n is not None:
+            if len(recs) == n:
+                return recs
+        else:
+            candidates.append(recs)
+    if n is not None or not candidates:
         return None
-    with open(hits[-1], encoding="utf-8") as fh:
-        return [json.loads(line) for line in fh]
+    # No size requested: take the LARGEST run, i.e. the full split. Taking the
+    # newest instead would pair a full-dev cell with a small ad-hoc run.
+    return max(candidates, key=len)
 
 
 def run_cells(split: str, limit: int | None) -> None:
@@ -85,11 +117,16 @@ def run_cells(split: str, limit: int | None) -> None:
         print(f"    done in {time.perf_counter() - t0:.1f}s", flush=True)
 
 
-def build_tables(split: str) -> dict:
-    R = {c: load_cell(c, split) for c in CELLS}
+def build_tables(split: str, n: int | None = None) -> dict:
+    R = {c: load_cell(c, split, n) for c in CELLS}
     missing = [c for c, v in R.items() if v is None]
     if missing:
-        raise SystemExit(f"no raw results for cells {missing}; run without --tables-only")
+        want = f"exactly {n} records" if n else "any size"
+        raise SystemExit(
+            f"no {split} run with {want} for cells {missing}."
+            + NEWLINE + f"Available {split} runs:" + NEWLINE + _available(split)
+            + NEWLINE + "Use --limit to pick a size (--limit 0 = full split)."
+        )
 
     id_sets = {frozenset(r["id"] for r in v) for v in R.values()}
     if len(id_sets) != 1:
@@ -234,13 +271,21 @@ def main() -> int:
                     help="dev only; the test split is opened once, at M5")
     ap.add_argument("--tables-only", action="store_true",
                     help="rebuild tables from existing raw results without re-running models")
+    ap.add_argument("--list-runs", action="store_true",
+                    help="list available raw runs with their sizes, then exit")
     args = ap.parse_args()
     limit = None if args.limit == 0 else args.limit
+    expected_n = (2 * limit) if limit else None
+
+    if args.list_runs:
+        print(f"Available {args.split} runs:")
+        print(_available(args.split))
+        return 0
 
     if not args.tables_only:
         print(f"Running all six cells on split={args.split} limit={limit or 'FULL'} ...")
         run_cells(args.split, limit)
-    report(build_tables(args.split), args.split)
+    report(build_tables(args.split, expected_n), args.split)
     return 0
 
 
