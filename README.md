@@ -48,13 +48,12 @@ The obvious objection to everything above is that the effect might be a property
 of AMBER — AMBER supplies the contrastive pair, balances it perfectly, and (see
 below) leaks the answer through question ids.
 
-So the method was run, **unchanged**, on a second dataset: **SHROOM-Vis**, 900
-images from the SHROOM hallucination-detection image set (supplied
-separately; the images are not redistributed here), annotated in AMBER's exact
-schema —
-898 usable images, **2,523 pairs, 5,046 questions**. Same two pinned model
-revisions, same prompt template, same thresholds-frozen-from-dev protocol, same
-seed. `configs/main.yaml` was not touched.
+So the method was run, **unchanged**, on a second dataset: **SHROOM-Vis** — 900
+images from the SHROOM hallucination-detection image set, annotated in AMBER's
+exact schema, of which 898 are usable: **2,523 pairs, 5,046 questions**. Same two
+pinned model revisions, same prompt template, same thresholds-frozen-from-dev
+protocol, same seed. `configs/main.yaml` was not touched. (The annotations are in
+this repo; the images are supplied separately and not redistributed here.)
 
 |  | threshold | forced choice |
 |---|---|---|
