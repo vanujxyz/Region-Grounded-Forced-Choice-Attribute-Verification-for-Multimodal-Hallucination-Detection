@@ -1,0 +1,125 @@
+{
+  "run_id": "attribute_D_shroom-dev_20260913T082730Z",
+  "git_commit": "52dde9bb18a929697d21df4ab6039b5ba51dc015",
+  "timestamp_utc": "2026-09-13T09:21:30.354851+00:00",
+  "config_path": "configs\\main.yaml",
+  "config": {
+    "seed": 20260907,
+    "split": "dev",
+    "detector": {
+      "model_id": "google/owlv2-base-patch16-ensemble",
+      "revision": "cfd3195ba4ea9592eec887ded089f4c08eff231d",
+      "prompt_template": "a photo of a {phrase}",
+      "threshold": 0.1,
+      "nms_iou": 0.5
+    },
+    "crop": {
+      "padding": 0.1,
+      "min_size": 64
+    },
+    "attribute": {
+      "model_id": "google/siglip-base-patch16-224",
+      "revision": "7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed",
+      "prompt_template": "a photo of a {attr} {obj}",
+      "confidence_k": 10.0,
+      "score_scale": "logit",
+      "device": "cuda"
+    },
+    "existence": {
+      "threshold": null
+    },
+    "relation": {
+      "tau": null
+    },
+    "bootstrap": {
+      "n_resamples": 10000,
+      "seed": 20260907
+    },
+    "_config_path": "configs\\main.yaml"
+  },
+  "paths": {
+    "amber": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\data\\amber",
+    "images": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\data\\images",
+    "splits": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\data\\splits\\splits.json",
+    "results": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results",
+    "results_raw": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results\\raw",
+    "results_tables": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results\\tables",
+    "demo_out": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results\\demo",
+    "hf_cache": "C:\\hf"
+  },
+  "models": {
+    "detector": {
+      "id": "google/owlv2-base-patch16-ensemble",
+      "revision": "cfd3195ba4ea9592eec887ded089f4c08eff231d"
+    },
+    "attribute": {
+      "id": "google/siglip-base-patch16-224",
+      "revision": "7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed"
+    }
+  },
+  "seed": 20260907,
+  "dataset": "shroom",
+  "split": "dev",
+  "limit": null,
+  "cell": "all",
+  "module": "attribute",
+  "packages": {
+    "torch": "2.6.0+cu124",
+    "transformers": "5.16.1",
+    "numpy": "2.4.6",
+    "pillow": "12.3.0",
+    "pydantic": "2.13.5",
+    "spacy": "3.8.16"
+  },
+  "python": "3.11.16",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "tau": "NOT_APPLICABLE",
+  "ties": {
+    "tie_count": 0,
+    "comparisons": 1767,
+    "tie_rate": 0.0,
+    "examples": []
+  },
+  "n_pairs": 1767,
+  "vram": {
+    "available": true,
+    "peak_allocated_gib": 0.7728981971740723,
+    "peak_used_gib": 1.661914061754942,
+    "min_free_gib": 2.337597656995058,
+    "total_gib": 3.99951171875,
+    "per_stage_peak_allocated_gib": {
+      "scorer_stage_end": 0.7728981971740723
+    }
+  },
+  "detection_scores": {
+    "n": 1687,
+    "min": 0.10069217532873154,
+    "p25": 0.2730847895145416,
+    "median": 0.3810606002807617,
+    "p75": 0.4976864159107208,
+    "max": 0.9640911221504211,
+    "mean": 0.3951253027086012,
+    "histogram": {
+      "[0.00,0.10)": 0,
+      "[0.10,0.15)": 73,
+      "[0.15,0.20)": 99,
+      "[0.20,0.30)": 340,
+      "[0.30,0.40)": 407,
+      "[0.40,0.50)": 350,
+      "[0.50,0.70)": 342,
+      "[0.70,1.01)": 76
+    }
+  },
+  "n_unique_regions": 1767,
+  "coverage": "NOT_APPLICABLE",
+  "crop_cache": {
+    "enabled": true,
+    "path": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results\\cache\\shroom\\detections_85350fc83a0c652f.json",
+    "fingerprint": "85350fc83a0c652f",
+    "hits": 1767,
+    "misses": 0,
+    "hit_rate": 1.0,
+    "entries": 1777
+  }
+}

@@ -133,6 +133,7 @@ def write_manifest(run_id: str, cfg: dict, args, extra: dict[str, Any]) -> Path:
             },
         },
         "seed": args.seed if args.seed is not None else cfg["seed"],
+        "dataset": getattr(args, "dataset", "amber"),
         "split": args.split,
         "limit": args.limit,
         "cell": args.cell,
@@ -188,20 +189,56 @@ def permute_pair_ids(pairs: list, seed: int = PERMUTE_SEED) -> list:
     return out
 
 
-def select_pairs(split: str, limit: int | None, permute_ids: bool = False) -> list:
+DATASETS = ("amber", "shroom")
+
+
+def dataset_api(dataset: str) -> dict[str, Any]:
+    """Resolve one dataset's readers and image directory.
+
+    A second dataset gets a second reader rather than a generalised one: the
+    AMBER loader asserts AMBER's exact record counts on every call (TRD §2/§3)
+    and those assertions are load-bearing. See src/data/shroom.py.
+    """
+    if dataset == "amber":
+        return {
+            "get_split": get_split,
+            "load_attr_pairs": load_attr_pairs,
+            "load_questions": load_questions,
+            "images": paths()["images"],
+            "cache_dir": paths()["results"] / "cache",
+            "run_tag": "",
+        }
+    if dataset == "shroom":
+        from src.data import shroom
+
+        return {
+            "get_split": shroom.get_split,
+            "load_attr_pairs": shroom.load_attr_pairs,
+            "load_questions": shroom.load_questions,
+            "images": shroom.IMAGES_DIR,
+            "cache_dir": paths()["results"] / "cache" / "shroom",
+            "run_tag": "shroom-",
+        }
+    raise ValueError(f"unknown dataset {dataset!r}; expected one of {DATASETS}")
+
+
+def select_pairs(
+    split: str, limit: int | None, permute_ids: bool = False, dataset: str = "amber"
+) -> list:
     """Pairs whose image is in ``split``, in deterministic id order."""
-    images = set(get_split(split))
-    pairs = [p for p in load_attr_pairs() if p.image in images]
+    api = dataset_api(dataset)
+    images = set(api["get_split"](split))
+    pairs = [p for p in api["load_attr_pairs"]() if p.image in images]
     pairs.sort(key=lambda p: p.positive_id)
     pairs = pairs[:limit] if limit else pairs
     return permute_pair_ids(pairs) if permute_ids else pairs
 
 
-def _qtype_map() -> dict[int, str]:
-    return {q.id: q.qtype for q in load_questions()}
+def _qtype_map(dataset: str = "amber") -> dict[int, str]:
+    return {q.id: q.qtype for q in dataset_api(dataset)["load_questions"]()}
 
 
-def frozen_tau_from_dev(cell: str) -> tuple[float, dict]:
+def frozen_tau_from_dev(cell: str, dataset: str = "amber") -> tuple[float, dict]:
     """The tau fitted on dev for ``cell``, for use on the test split.
 
     TRD §16 forbids fitting any threshold on the test split. This reads the tau
@@ -211,7 +248,10 @@ def frozen_tau_from_dev(cell: str) -> tuple[float, dict]:
     import glob as _glob
 
     raw = paths()["results_raw"]
-    hits = sorted(_glob.glob(str(raw / f"attribute_{cell}_dev_*.manifest.json")), reverse=True)
+    tag = dataset_api(dataset)["run_tag"]
+    hits = sorted(
+        _glob.glob(str(raw / f"attribute_{cell}_{tag}dev_*.manifest.json")), reverse=True
+    )
     for path in hits:
         with open(path, encoding="utf-8") as fh:
             man = json.load(fh)
@@ -223,13 +263,18 @@ def frozen_tau_from_dev(cell: str) -> tuple[float, dict]:
                 "protocol": "frozen-from-dev (NOT fitted on test)",
             }
     raise RuntimeError(
-        f"no dev manifest with a fitted tau found for cell {cell}. "
+        f"no {dataset} dev manifest with a fitted tau found for cell {cell}. "
         "Run the cell on dev first; tau is never fitted on the test split."
     )
 
 
 def run_attribute_cell(
-    cell: str, split: str, limit: int | None, cfg: dict, no_cache: bool = False
+    cell: str,
+    split: str,
+    limit: int | None,
+    cfg: dict,
+    no_cache: bool = False,
+    dataset: str = "amber",
 ) -> dict:
     """Run one attribute cell end to end. Returns records + diagnostics."""
     from PIL import Image
@@ -247,11 +292,14 @@ def run_attribute_cell(
         region_of,
     )
 
-    pairs = select_pairs(split, limit)
+    api = dataset_api(dataset)
+    pairs = select_pairs(split, limit, dataset=dataset)
     if not pairs:
-        raise RuntimeError(f"no pairs selected for split={split} limit={limit}")
+        raise RuntimeError(
+            f"no pairs selected for dataset={dataset} split={split} limit={limit}"
+        )
 
-    images_dir = paths()["images"]
+    images_dir = api["images"]
     needs_crop = region_of(cell) == "crop"
     vram = VramTracker()
 
@@ -262,7 +310,7 @@ def run_attribute_cell(
     if needs_crop:
         from src.modules.crop_cache import CropCache
 
-        cache = CropCache(cfg, enabled=not no_cache)
+        cache = CropCache(cfg, path=api["cache_dir"], enabled=not no_cache)
         wanted = []
         for p in pairs:
             key = f"{p.image}|{p.obj}"
@@ -330,7 +378,7 @@ def run_attribute_cell(
         tau = None
         if decision_of(cell) == "threshold" and split == "test":
             # TRD §16: never fit a threshold on the test split.
-            tau, tau_info = frozen_tau_from_dev(cell)
+            tau, tau_info = frozen_tau_from_dev(cell, dataset)
             tau_info["applied_split"] = "test"
         elif decision_of(cell) == "threshold":
             # TRD §7: tau fitted on dev by sweeping. See D-012 on the --limit case.
@@ -372,12 +420,13 @@ def run_attribute_cell(
         ties = scorer.tie_log.as_dict()
         vram.mark("scorer_stage_end")
 
-    qtypes = _qtype_map()
+    qtypes = _qtype_map(dataset)
     for r in records:
         r["qtype"] = qtypes[r["id"]]
 
     return {
         "records": records,
+        "dataset": dataset,
         "tau": tau_info,
         "ties": ties,
         "n_pairs": len(pairs),
@@ -574,12 +623,12 @@ def run_relation(split: str, limit: int | None, cfg: dict) -> dict:
     }
 
 
-def run_position_only(split: str, limit: int | None) -> dict:
+def run_position_only(split: str, limit: int | None, dataset: str = "amber") -> dict:
     from src.modules.position_baseline import predict
 
-    pairs = select_pairs(split, limit)
+    pairs = select_pairs(split, limit, dataset=dataset)
     records = predict(pairs)
-    qtypes = _qtype_map()
+    qtypes = _qtype_map(dataset)
     for r in records:
         r["qtype"] = qtypes[r["id"]]
     return {"records": records, "tau": "NOT_APPLICABLE",
@@ -692,6 +741,8 @@ def main(argv: list[str] | None = None) -> int:
         choices=["attribute", "existence", "counting", "relation", "position-only", "all"],
         default="attribute",
     )
+    ap.add_argument("--dataset", choices=list(DATASETS), default="amber",
+                    help="amber (default) or shroom, the second attribute benchmark")
     ap.add_argument("--split", choices=["dev", "test"], default="dev")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--config", default=None)
@@ -708,6 +759,13 @@ def main(argv: list[str] | None = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    tag = dataset_api(args.dataset)["run_tag"]
+
+    if args.dataset != "amber" and args.module not in ("attribute", "position-only"):
+        ap.error(
+            f"--dataset {args.dataset} annotates attribute questions only; "
+            f"--module {args.module} has no data on it"
+        )
 
     if args.module in ("existence", "counting", "relation"):
         if args.module == "existence":
@@ -724,8 +782,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.module == "position-only":
-        result = run_position_only(args.split, args.limit)
-        run_id = f"position-only_{args.split}_{stamp}"
+        result = run_position_only(args.split, args.limit, args.dataset)
+        run_id = f"position-only_{tag}{args.split}_{stamp}"
         _report("POSITION-ONLY BASELINE (benchmark artifact)", result)
         write_jsonl(result["records"], out_dir / f"{run_id}.jsonl")
         write_manifest(run_id, cfg, args, {"n_pairs": result["n_pairs"]})
@@ -741,8 +799,10 @@ def main(argv: list[str] | None = None) -> int:
     else:
         cells = [args.cell]
     for cell in cells:
-        result = run_attribute_cell(cell, args.split, args.limit, cfg, args.no_cache)
-        run_id = f"attribute_{cell}_{args.split}_{stamp}"
+        result = run_attribute_cell(
+            cell, args.split, args.limit, cfg, args.no_cache, args.dataset
+        )
+        run_id = f"attribute_{cell}_{tag}{args.split}_{stamp}"
         _report(f"CELL {cell}", result)
         write_jsonl(result["records"], out_dir / f"{run_id}.jsonl")
         write_manifest(

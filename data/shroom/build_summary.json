@@ -1,0 +1,29 @@
+{
+ "images_on_disk": 2495,
+ "images_in_log": 900,
+ "images_annotated": 898,
+ "images_dropped": 2,
+ "pairs": 2523,
+ "questions": 5046,
+ "pairs_per_annotated_image": 2.809576837416481,
+ "kind_counts": {
+  "state": 2190,
+  "action": 333
+ },
+ "positive_lower_id": 1303,
+ "positive_lower_id_rate": 0.5164486722156163,
+ "in_amber_vocab_pairs": 1692,
+ "distinct_objects": 433,
+ "distinct_triples": 1127,
+ "dropped": [
+  {
+   "file": "5305_5653102774_190d93e637_o.jpg",
+   "reason": "abstract colour gradient; no nameable object"
+  },
+  {
+   "file": "5392733606_26b887979f_o.jpg",
+   "reason": "too dark and grainy to identify any object with confidence"
+  }
+ ],
+ "seed": 20260907
+}

@@ -5,6 +5,9 @@ __pycache__/
 
 # The AMBER images are a 1,004-file manual Google Drive download, not source.
 data/images/
+# The SHROOM images are 2,495 files / 2.4 GB, supplied separately and not
+# redistributed here. data/shroom/ holds the annotations, which ARE tracked.
+shroom-visions-images/
 # Upstream clone; data/amber/ holds the copy we actually read.
 data/amber_repo/
 

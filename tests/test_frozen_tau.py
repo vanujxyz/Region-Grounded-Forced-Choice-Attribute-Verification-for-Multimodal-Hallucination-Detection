@@ -30,7 +30,7 @@ def test_test_split_takes_the_frozen_branch_not_the_fitting_branch():
     """Static guard: the fitting path must be unreachable when split == 'test'."""
     src = inspect.getsource(run_attribute_cell)
     assert 'split == "test"' in src, "test split is not special-cased"
-    assert "frozen_tau_from_dev(cell)" in src
+    assert "frozen_tau_from_dev(cell, dataset)" in src
     frozen_at = src.index('split == "test"')
     fit_at = src.index("fit_tau(fit_data)")
     assert frozen_at < fit_at, (

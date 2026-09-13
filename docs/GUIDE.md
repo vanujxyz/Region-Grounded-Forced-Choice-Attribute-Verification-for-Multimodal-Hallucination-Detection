@@ -290,3 +290,124 @@ findstr /R /C:"^### D-" docs\DECISIONS.md
 - **The dev interaction did not replicate.** +0.0223 on dev, +0.0023 on test.
 - **Region grounding is in the project title but contributes about 2 points of
   22.** That is the thing to be ready to defend.
+
+---
+
+## 9. SHROOM-Vis — running the method on a second dataset
+
+`shroom-visions-images/shroom-vis-images/` holds 2,495 images from the SHROOM
+vision set. 900 of them were annotated to AMBER's two attribute templates so
+that the four cells can be re-run **with no change to the method** — same
+frozen constants, same prompt, same pinned model revisions.
+
+The annotation policy was fixed before any SHROOM number existed:
+**[`data/shroom/ANNOTATION_POLICY.md`](../data/shroom/ANNOTATION_POLICY.md)**.
+The annotator is Claude (Opus 5) — a vision–language model, but *not* either of
+the two models under test. This is a silver-standard benchmark and is reported
+as one.
+
+### Rebuild the dataset from the raw annotation log
+
+```bat
+python scripts\shroom_build.py
+```
+
+Reads `data/shroom/annotations_raw.jsonl` and writes `annotations.json`,
+`query/query_all.json` and `pair_meta.json` in AMBER's exact schema. Every rule
+in the policy that can be machine-checked is enforced here, and a violation
+aborts the build rather than being repaired. Two checks earned their place:
+
+- a **multi-word object** is rejected, because AMBER's regexes are non-greedy on
+  both fields and `Is the trash can green in this image?` silently parses as
+  object `trash`, attribute `can green`;
+- an attribute that **repeats a word of its own object** is rejected.
+
+### The artifact AMBER has and this does not
+
+AMBER gives the true attribute the lower question id in **all 2,774** of its
+attribute pairs, so "answer yes to the lower id" scores **1.0000** without ever
+opening an image. SHROOM-Vis decides that by a seeded coin flip:
+
+```bat
+python -m src.run --dataset shroom --module position-only --split dev
+```
+
+Expect **~0.50**. That is the single most important property of this dataset.
+
+### Run the cells
+
+```bat
+set HF_HOME=C:\hf
+python -m src.run --dataset shroom --cell all --split dev
+python -m src.run --dataset shroom --cell all-diag --split dev
+python scripts\shroom_report.py dev
+```
+
+Then, once and only once, the held-out split — thresholds read from the dev
+manifests by `frozen_tau_from_dev`, nothing fitted:
+
+```bat
+set ALLOW_TEST_SPLIT=1
+python -m src.run --dataset shroom --cell all --split test
+python scripts\shroom_report.py test
+```
+
+`shroom_report.py` prints the 2x2, the paired-bootstrap attribution with the
+AMBER test figures alongside for comparison, and two breakdowns specific to this
+dataset: **in / out of AMBER's closed 340-object vocabulary**, and by question
+kind.
+
+### What is and is not shared with the AMBER path
+
+`src/data/shroom.py` is a **second reader**, not a generalisation of the first.
+The AMBER loader asserts AMBER's exact record counts on every call (TRD §2/§3)
+and those assertions are load-bearing, so they were left alone. Everything after
+the reader — detector, crop, scorer, the four cells, metrics, the image-level
+bootstrap — is the same code running on different data, which is the whole point.
+
+SHROOM detections cache separately, under `results/cache/shroom/`.
+
+### How it compares to AMBER
+
+| | AMBER | SHROOM-Vis |
+|---|---|---|
+| images | 1,004 | 898 (900 viewed, 2 dropped) |
+| attribute pairs | 2,774 | 2,523 |
+| questions | 5,548 | 5,046 |
+| pairs per image | 2.76 | 2.81 |
+| distinct objects | 340 (closed vocabulary) | 433 (open) |
+| true attribute has the lower id | **2,774 / 2,774** | 1,303 / 2,523 |
+
+### Timing on the 4 GB laptop GPU
+
+Dev: A ~14 min, B ~8 min, C ~30 min (23 of it OWLv2 over 1,760 regions), D ~3 min
+once detections are cached. Test is ~43% of that, and the threshold cells need
+only **one** pass there because tau is frozen rather than fitted.
+
+### What it found
+
+- **The headline replicated.** D - A = **+0.2354** [+0.2103, +0.2608] on SHROOM
+  test against **+0.2260** on AMBER test. On dev the two agreed to within 0.0002
+  (+0.2261 vs +0.2260).
+- **Forced choice is still the mechanism** - +0.2235 of the +0.2354, i.e. 95%.
+- **Region grounding is stronger here**, which revised D-050 upward:
+  C - A = **+0.0364** [+0.0177, +0.0553], an order of magnitude clear of zero,
+  where on AMBER it cleared zero by one part in a thousand (D-056). It helps most
+  on objects *outside* AMBER's 340-word vocabulary.
+- **The interaction is absent again**, now slightly negative (D-057).
+- **SHROOM-Vis is easier than AMBER** by 4-6 points in every cell, so only the
+  *contrasts* are comparable across the two datasets (D-058).
+
+Full write-up: `docs/DECISIONS.md`, section **M6** (D-052 to D-060).
+
+### The tests
+
+```bat
+python -m pytest tests	est_shroom.py -q
+```
+
+11 tests, no GPU. They assert the dataset contract and, more importantly, the
+artifacts it must *not* have: the id-ordering leak, an attribute repeating a word
+of its own object, a multi-word object the non-greedy regexes would mis-parse, an
+unbalanced gold distribution, and a filename the pipeline could read an index out
+of.

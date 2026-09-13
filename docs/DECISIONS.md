@@ -86,7 +86,10 @@ characters. The HuggingFace cache will need a short path (e.g. `C:\hf`) at M1.
 
 ## Tuning log
 
-**EMPTY, as of project completion (M0-M5).**
+**EMPTY, as of project completion (M0-M6).**
+
+M6 added a second dataset (SHROOM-Vis) and changed nothing about the method:
+`configs/main.yaml` is byte-identical to the M5 version. See D-060.
 
 No threshold, padding, prompt template, NMS setting or constant was ever adjusted
 to improve a reported number. Every cell was run **once** per split. The two
@@ -96,7 +99,8 @@ frozen from that fit -- recorded in each test manifest as
 `frozen-from-dev (NOT fitted on test)`.
 
 Two claims were withdrawn on stronger evidence, and both are reported rather than
-quietly corrected:
+quietly corrected (a third, D-050's wording on region grounding, was revised
+*upward* by the M6 replication -- see D-056):
 
 - **D-030 -> D-038**: "region grounding alone contributes nothing measurable",
   asserted on 100 pairs, falsified by the full dev set (+0.0150,
@@ -1480,3 +1484,202 @@ reported rather than quietly corrected.
   C' = −7.020545.
 - Split disjointness was frozen at M0: 702 dev / 302 test images by image, seed
   20260907, and no image appears in both.
+
+---
+
+## M6 — 2026-09-13 — external replication on a second dataset
+
+### D-052 — why a second dataset at all
+
+Every number in M0–M5 comes from AMBER. AMBER supplies the contrastive pair, so
+Cell B and Cell D are handed their option set by the benchmark; AMBER's
+attribute pairs are exactly balanced, so forced choice gets a correct 50/50
+prior free; and AMBER gives the true attribute the lower question id in
+**2,774 of 2,774** pairs, so a strategy that never opens an image scores
+1.0000. D-020 and D-032 built controls for the first two. None of that answers
+the simplest objection: *the effect might be a property of AMBER.*
+
+M6 answers it by annotating a second, unrelated image set in AMBER's schema and
+running the method on it **unchanged** — same two pinned model revisions, same
+prompt template, same padding, same NMS, same 0.10 detector threshold, same
+70/30 image-level split under the same seed.
+
+### D-053 — the dataset: SHROOM-Vis, 900 images, VLM-annotated
+
+`shroom-visions-images/` holds 2,495 images from the SHROOM hallucination-detection
+set — Flickr-style scene photographs plus object/subtype studio shots. The first
+**900** by sorted filename were annotated; 2 were dropped (one an abstract colour
+gradient, one too dark to attribute), leaving **898 images, 2,523 pairs, 5,046
+questions** at 2.81 pairs per image against AMBER's 2.76.
+
+The annotator is **Claude (Opus 5), a vision–language model** — not a human, and
+not either model under test. This is a **silver-standard** benchmark and is
+labelled as such everywhere it appears. The independence argument is narrow but
+real: OWLv2 and SigLIP were never consulted during annotation, so the gold
+labels are not the system's own output fed back to it. No claim is made that
+these labels match a human panel's.
+
+The policy was frozen in `data/shroom/ANNOTATION_POLICY.md` **before any SHROOM
+result existed**, because in a forced-choice benchmark the negative attribute
+sets the difficulty: easy negatives inflate every cell, adversarial ones depress
+every cell. Two clauses were amended mid-annotation, both before any model had
+been run on the data, and both recorded in the file itself: the pair-per-image
+quota (2–4 became 1–4, so a thin image is not padded with a weak pair) and an
+explicit single-word-object rule.
+
+### D-054 — the id-ordering artifact was deliberately not reproduced
+
+Within each pair, which question receives the lower id is a seeded coin flip
+(`scripts/shroom_build.py`, seed 20260907). Realised rate: the true attribute
+holds the lower id in **1,303 of 2,523** pairs = 0.5164.
+
+`--module position-only` therefore scores **0.5020 on dev** and **0.5503 on
+test**, against **1.0000 on AMBER**. The test figure sits about 2.8 standard
+errors above chance: the coin flip is unbiased over the whole dataset, and the
+test split is a subset of it rather than a fresh randomisation, so that subset
+happens to lean. It is reported as measured rather than rounded to 0.5.
+
+### D-055 — the headline replicated
+
+Test split, opened once, every threshold frozen from the SHROOM dev fit.
+
+| | SHROOM-Vis test | AMBER test |
+|---|---|---|
+| **A** whole image + threshold | 0.6177 | 0.5751 |
+| **B** whole image + forced choice | 0.8413 | 0.7787 |
+| **C** cropped + threshold | 0.6541 | 0.5953 |
+| **D** cropped + forced choice | **0.8532** | 0.8012 |
+
+| contrast | SHROOM test | AMBER test |
+|---|---|---|
+| **D − A** headline | **+0.2354** [+0.2103, +0.2608] | +0.2260 [+0.2001, +0.2514] |
+| **B − A** forced choice alone | **+0.2235** [+0.1962, +0.2507] | +0.2036 [+0.1781, +0.2288] |
+| **C − A** region grounding alone | **+0.0364** [+0.0177, +0.0553] | +0.0201 [+0.0012, +0.0391] |
+| **D − B** cropping given forced choice | **+0.0119** [−0.0159, +0.0406] | +0.0225 [−0.0012, +0.0462] |
+
+The two headline intervals overlap across almost their whole length. On the
+**dev** split the agreement was closer still — D − A **+0.2261** against AMBER
+test's +0.2260, B − A **+0.2035** against +0.2036, D − B **+0.0226** against
++0.0225 — three contrasts matching to within 0.0002 on a different dataset with
+a different annotator and a partly disjoint object vocabulary. That is
+coincidence in its precision but not in its direction.
+
+**Forced choice remains the mechanism.** +0.2235 of the +0.2354, i.e. 95%.
+
+### D-056 — region grounding is stronger here than on AMBER, and this revises D-050
+
+D-050 described region grounding as *"marginal and split-dependent"*: C − A was
++0.0201 on AMBER test with a CI lower bound of +0.0012, clearing zero by about
+one part in a thousand.
+
+On SHROOM-Vis it is **+0.0364, CI [+0.0177, +0.0553]** on test and **+0.0323,
+CI [+0.0181, +0.0463]** on dev. The lower bound is an order of magnitude clear
+of zero on both splits, and the point estimate is roughly 1.8x AMBER's.
+
+The wording of D-050 is therefore **too pessimistic, but its substance stands**:
+region grounding is real and it is small. It is now *reliably* small rather than
+*barely* non-zero. The ratio is what matters — forced choice is still 6x larger,
+so the framing established in D-041 and confirmed in D-050 ("changing the
+decision rule is what matters; localisation helps far less than is commonly
+assumed") is unchanged.
+
+A plausible reason it is larger here: SHROOM-Vis names objects outside AMBER's
+closed 340-object vocabulary, and cropping helps most exactly there.
+
+| subset | n | C − A | D − A |
+|---|---|---|---|
+| object in AMBER's 340-word vocabulary | 1,010 | +0.0337 | +0.2505 [+0.2179, +0.2818] |
+| object outside it | 502 | +0.0418 | +0.2052 [+0.1581, +0.2510] |
+
+### D-057 — the interaction is absent again, in the other direction
+
+D-050 withdrew the superadditive interaction found on AMBER dev (+0.0223) after
+it failed to replicate on AMBER test (+0.0023).
+
+On SHROOM-Vis it is **negative**: (D − B) − (C − A) = 0.0119 − 0.0364 =
+**−0.0245** on test, and −0.0097 on dev. **D − B includes zero on test**
+([−0.0159, +0.0406]), exactly as on AMBER test.
+
+So across two datasets and four splits the interaction has come out +0.0223,
++0.0023, −0.0097, −0.0245. It is noise around zero, and the two mechanisms are
+at best additive. D-050's withdrawal is confirmed and strengthened; the
+possibility that cropping *slightly interferes* once forced choice is in place
+is now on the table but is not claimed — its interval includes zero.
+
+### D-058 — SHROOM-Vis is easier than AMBER, and that is not hidden
+
+Every cell scores higher on SHROOM-Vis than on AMBER: A +0.043, B +0.063,
+C +0.059, D +0.052. The absolute numbers are therefore **not** comparable
+across the two datasets, and only the *contrasts* are.
+
+The most likely cause is the annotator. AMBER's negatives were written by a
+pipeline with human verification; mine were written under a policy that says
+"where a negative might arguably hold, the pair is dropped rather than guessed."
+That rule buys label reliability at the cost of difficulty. A benchmark whose
+negatives are all comfortably false is an easier benchmark.
+
+This is why every claim in D-055 to D-057 is stated as a difference between
+cells measured on the *same* questions, never as an absolute accuracy compared
+across datasets.
+
+### D-059 — every control from M1–M4 also replicated
+
+The A′/C′ base-rate controls (D-020) and the D-ext external-contrast control
+(D-032) were run on SHROOM-Vis **after** the headline, so that nothing in
+D-055 to D-058 could depend on them. All three transfer.
+
+**A′ / C′ — the base-rate controls.** Cells B and D emit exactly one "yes" per
+pair, and the pairs are exactly balanced, so forced choice is handed a correct
+50/50 prior free. A′ and C′ remove that asymmetry by choosing tau to match the
+known base rate instead of to maximise accuracy.
+
+| | dev | test |
+|---|---|---|
+| A (accuracy-maximising tau) | 0.6262 | 0.6177 |
+| A′ (base-rate-matched tau) | 0.6208 | 0.6164 |
+| C | 0.6585 | 0.6541 |
+| C′ | 0.6463 | 0.6501 |
+| **B − A′** | **+0.2088** [+0.1914, +0.2264] | **+0.2249** [+0.1979, +0.2510] |
+| **D − C′** | **+0.2060** [+0.1893, +0.2227] | **+0.2030** [+0.1783, +0.2280] |
+
+Giving the threshold cells the correct prior made them slightly **worse**, so
+B − A′ (+0.2249) is *larger* than B − A (+0.2235) on test. This is the same
+finding as on AMBER, where the README records that the matched prior "widened
+the gap". The free prior is therefore not what forced choice is winning on.
+
+**D-ext — the external-contrast control.** This is the strongest objection to the
+whole method: AMBER, and now SHROOM-Vis, hand Cell D its competing attribute.
+D-ext instead draws the competitor from `configs/antonyms.yaml` and answers each
+question **alone**, never seeing its partner. That map was committed for AMBER
+before any result existed and was **not modified for SHROOM-Vis**; it covers
+1,275 of 1,512 test questions (84.3%) as-is. Unmapped questions produce no
+record and are excluded rather than guessed.
+
+| | dev | test | AMBER test |
+|---|---|---|---|
+| coverage | 3,056/3,534 = 0.8647 | 1,275/1,512 = 0.8433 | 0.79 (actions) |
+| A on the covered subset | 0.6214 | 0.6024 | — |
+| D on the covered subset | 0.8527 | 0.8455 | — |
+| **D-ext** | **0.7808** | **0.7796** | — |
+| **D-ext − A** (covered) | **+0.1594** [+0.1402, +0.1786] | **+0.1773** [+0.1489, +0.2054] | **+0.1901** |
+| D-ext − D (covered) | −0.0720 [−0.0842, −0.0597] | −0.0659 [−0.0883, −0.0448] | ≈ −0.036 |
+
+**+0.1773 over the baseline with no help from the dataset at all**, against
++0.1901 on AMBER. The contribution survives removing the contrastive structure,
+on both datasets.
+
+D-ext is reliably *worse* than D (−0.0659), and by about twice the margin seen on
+AMBER. That is expected and is worth stating plainly: a generic antonym is a
+poorer-matched competitor than the negative a human (or here a VLM) chose for
+that specific object in that specific image, and SHROOM-Vis has a wider attribute
+vocabulary (157 distinct attributes) for a 210-entry map to cover. The gap
+measures how much of Cell D's margin comes from the *quality* of the competing
+hypothesis — roughly 7 points of the 24.
+
+### D-060 — the tuning log is still empty
+
+No threshold, padding, prompt template, NMS setting or constant was adjusted for
+SHROOM-Vis. `configs/main.yaml` is byte-identical to the M5 version. The method
+was not touched; only a second dataset was placed in front of it. The two
+annotation-policy amendments in D-053 changed how the *data* was written, before
+any model saw it, and are recorded in the policy file with that timing stated.
