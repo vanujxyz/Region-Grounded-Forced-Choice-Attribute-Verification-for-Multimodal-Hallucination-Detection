@@ -1,0 +1,107 @@
+{
+  "run_id": "attribute_B_dev_20260908T160239Z",
+  "git_commit": "52dde9bb18a929697d21df4ab6039b5ba51dc015",
+  "timestamp_utc": "2026-09-08T16:03:00.417026+00:00",
+  "config_path": "configs\\main.yaml",
+  "config": {
+    "seed": 20260907,
+    "split": "dev",
+    "detector": {
+      "model_id": "google/owlv2-base-patch16-ensemble",
+      "revision": "cfd3195ba4ea9592eec887ded089f4c08eff231d",
+      "prompt_template": "a photo of a {phrase}",
+      "threshold": 0.1,
+      "nms_iou": 0.5
+    },
+    "crop": {
+      "padding": 0.1,
+      "min_size": 64
+    },
+    "attribute": {
+      "model_id": "google/siglip-base-patch16-224",
+      "revision": "7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed",
+      "prompt_template": "a photo of a {attr} {obj}",
+      "confidence_k": 10.0,
+      "score_scale": "logit",
+      "device": "cuda"
+    },
+    "existence": {
+      "threshold": null
+    },
+    "relation": {
+      "tau": null
+    },
+    "bootstrap": {
+      "n_resamples": 10000,
+      "seed": 20260907
+    },
+    "_config_path": "configs\\main.yaml"
+  },
+  "paths": {
+    "amber": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\data\\amber",
+    "images": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\data\\images",
+    "splits": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\data\\splits\\splits.json",
+    "results": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results",
+    "results_raw": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results\\raw",
+    "results_tables": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results\\tables",
+    "demo_out": "C:\\Users\\vgang\\Desktop\\Region-Grounded Forced-Choice Attribute Verification for Multimodal Hallucination Detection\\results\\demo",
+    "hf_cache": "C:\\hf"
+  },
+  "models": {
+    "detector": {
+      "id": "google/owlv2-base-patch16-ensemble",
+      "revision": "cfd3195ba4ea9592eec887ded089f4c08eff231d"
+    },
+    "attribute": {
+      "id": "google/siglip-base-patch16-224",
+      "revision": "7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed"
+    }
+  },
+  "seed": 20260907,
+  "split": "dev",
+  "limit": 100,
+  "cell": "B",
+  "module": "attribute",
+  "packages": {
+    "torch": "2.6.0+cu124",
+    "transformers": "5.16.1",
+    "numpy": "2.4.6",
+    "pillow": "12.3.0",
+    "pydantic": "2.13.5",
+    "spacy": "3.8.16"
+  },
+  "python": "3.11.16",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "tau": "NOT_APPLICABLE",
+  "ties": {
+    "tie_count": 0,
+    "comparisons": 100,
+    "tie_rate": 0.0,
+    "examples": []
+  },
+  "n_pairs": 100,
+  "vram": {
+    "available": true,
+    "peak_allocated_gib": 0.7722878456115723,
+    "peak_used_gib": 1.659960936754942,
+    "min_free_gib": 2.339550781995058,
+    "total_gib": 3.99951171875,
+    "per_stage_peak_allocated_gib": {
+      "scorer_stage_end": 0.7722878456115723
+    }
+  },
+  "detection_scores": {
+    "n": 0,
+    "min": "NOT_COMPUTED",
+    "p25": "NOT_COMPUTED",
+    "median": "NOT_COMPUTED",
+    "p75": "NOT_COMPUTED",
+    "max": "NOT_COMPUTED",
+    "mean": "NOT_COMPUTED",
+    "histogram": {}
+  },
+  "n_unique_regions": "NOT_APPLICABLE",
+  "coverage": "NOT_APPLICABLE",
+  "crop_cache": "NOT_APPLICABLE"
+}
