@@ -1,0 +1,86 @@
+{
+ "amber_A": {
+  "correct": 153,
+  "both_yes": 372,
+  "both_no": 294,
+  "reversed": 26,
+  "n": 845
+ },
+ "amber_B": {
+  "correct": 658,
+  "both_yes": 0,
+  "both_no": 0,
+  "reversed": 187,
+  "n": 845
+ },
+ "amber_C": {
+  "correct": 183,
+  "both_yes": 192,
+  "both_no": 448,
+  "reversed": 22,
+  "n": 845
+ },
+ "amber_D": {
+  "correct": 677,
+  "both_yes": 0,
+  "both_no": 0,
+  "reversed": 168,
+  "n": 845
+ },
+ "shroom_A": {
+  "correct": 190,
+  "both_yes": 209,
+  "both_no": 345,
+  "reversed": 12,
+  "n": 756
+ },
+ "shroom_B": {
+  "correct": 636,
+  "both_yes": 0,
+  "both_no": 0,
+  "reversed": 120,
+  "n": 756
+ },
+ "shroom_C": {
+  "correct": 246,
+  "both_yes": 238,
+  "both_no": 259,
+  "reversed": 13,
+  "n": 756
+ },
+ "shroom_D": {
+  "correct": 645,
+  "both_yes": 0,
+  "both_no": 0,
+  "reversed": 111,
+  "n": 756
+ },
+ "vaw_A": {
+  "correct": 290,
+  "both_yes": 688,
+  "both_no": 471,
+  "reversed": 51,
+  "n": 1500
+ },
+ "vaw_B": {
+  "correct": 1137,
+  "both_yes": 0,
+  "both_no": 0,
+  "reversed": 363,
+  "n": 1500
+ },
+ "vaw_C": {
+  "correct": 365,
+  "both_yes": 381,
+  "both_no": 715,
+  "reversed": 39,
+  "n": 1500
+ },
+ "vaw_D": {
+  "correct": 1220,
+  "both_yes": 0,
+  "both_no": 0,
+  "reversed": 280,
+  "n": 1500
+ }
+}

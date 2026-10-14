@@ -1,0 +1,16 @@
+{
+ "unparsed_or_missing": {
+  "prior:unparsed": 40,
+  "fc:unparsed": 10,
+  "thr:unparsed": 18,
+  "thr:missing": 660,
+  "prior:missing": 660,
+  "fc:missing": 330
+ },
+ "models": {
+  "claude-haiku-4-5-20251001": 555,
+  "null": 45
+ },
+ "questions_scored": 176,
+ "pairs_scored": 88
+}

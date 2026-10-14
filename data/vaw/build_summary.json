@@ -1,0 +1,58 @@
+{
+ "dev": {
+  "pairs": 1500,
+  "questions": 3000,
+  "images": 1500,
+  "by_type": {
+   "state": 400,
+   "material": 500,
+   "color": 600
+  },
+  "by_source": {
+   "vaw_val": 844,
+   "vaw_train_part1": 641,
+   "vaw_train_part2": 15
+  },
+  "distinct_objects": 472,
+  "distinct_triples": 1153,
+  "positive_lower_id_rate": 0.49266666666666664
+ },
+ "test": {
+  "pairs": 1500,
+  "questions": 3000,
+  "images": 1500,
+  "by_type": {
+   "state": 400,
+   "material": 500,
+   "color": 600
+  },
+  "by_source": {
+   "vaw_test": 1500
+  },
+  "distinct_objects": 456,
+  "distinct_triples": 1201,
+  "positive_lower_id_rate": 0.4886666666666667
+ },
+ "eligible_candidates": {
+  "test": {
+   "color": 3983,
+   "material": 2183,
+   "state": 485
+  },
+  "val": {
+   "color": 1477,
+   "material": 214,
+   "state": 50
+  },
+  "train_part1": {
+   "color": 7020,
+   "material": 1672,
+   "state": 338
+  },
+  "train_part2": {
+   "color": 3691,
+   "material": 1844,
+   "state": 361
+  }
+ }
+}

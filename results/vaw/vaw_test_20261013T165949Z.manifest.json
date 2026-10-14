@@ -1,0 +1,56 @@
+{
+ "tag": "vaw_test_20261013T165949Z",
+ "split": "test",
+ "n_pairs": 1500,
+ "limit": 0,
+ "protocol_sha256_16": "60247fb44cc6d1c8",
+ "pairs_sha256_16": "bcc927fbfb504b0a",
+ "config_sha256_16": "9f17297a9b1f1a30",
+ "antonyms_sha256_16": "c6bed9f709fabaf3",
+ "model_source": "local_prefetch_of_pinned_revision",
+ "detector": {
+  "model_id_pinned": "google/owlv2-base-patch16-ensemble",
+  "model_id": "C:\\Users\\vgang\\.claude-science\\orgs\\63360c88-5d29-48e6-a2b9-00ea59566cf5\\workspaces\\e998037b-a499-40c5-8ef7-80471946fcf4\\m\\owl",
+  "revision": "cfd3195ba4ea9592eec887ded089f4c08eff231d",
+  "threshold": 0.1,
+  "nms_iou": 0.5,
+  "prompt_template": "a photo of a {phrase}"
+ },
+ "attribute": {
+  "model_id_pinned": "google/siglip-base-patch16-224",
+  "model_id": "C:\\Users\\vgang\\.claude-science\\orgs\\63360c88-5d29-48e6-a2b9-00ea59566cf5\\workspaces\\e998037b-a499-40c5-8ef7-80471946fcf4\\m\\sig",
+  "revision": "7fd15f0689c79d79e38b1c2e2e2370a7bf2761ed",
+  "prompt_template": "a photo of a {attr} {obj}",
+  "score_scale": "logit"
+ },
+ "crop": {
+  "padding": 0.1,
+  "min_size": 64
+ },
+ "seed": 20260907,
+ "null_image": {
+  "size": 128,
+  "value": 128
+ },
+ "device": "NVIDIA GeForce RTX 3050 Laptop GPU",
+ "torch_threads": 12,
+ "versions": {
+  "python": "3.11.17",
+  "torch": "2.14.1",
+  "transformers": "5.16.1"
+ },
+ "seconds": {
+  "detection": 1768.5376183986664,
+  "scoring": 591.7264778614044
+ },
+ "fallback_rate": 0.08,
+ "crop_cache": {
+  "enabled": true,
+  "path": "C:\\Users\\vgang\\.claude-science\\orgs\\63360c88-5d29-48e6-a2b9-00ea59566cf5\\workspaces\\e998037b-a499-40c5-8ef7-80471946fcf4\\proj\\results\\cache\\vaw\\detections_8b2b4d48091274c3.json",
+  "fingerprint": "8b2b4d48091274c3",
+  "hits": 1500,
+  "misses": 1500,
+  "hit_rate": 0.5,
+  "entries": 3000
+ }
+}

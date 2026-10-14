@@ -10,6 +10,9 @@ data/images/
 shroom-visions-images/
 # Upstream clone; data/amber/ holds the copy we actually read.
 data/amber_repo/
+# VAW images are Visual Genome files fetched by image id, not redistributed
+# here. data/vaw/ holds the protocol and the built pair sets, which ARE tracked.
+data/vaw/images/
 
 # data/splits/splits.json is deliberately NOT ignored: it is frozen and tracked.
 

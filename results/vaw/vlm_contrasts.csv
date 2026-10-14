@@ -1,0 +1,13 @@
+comparison,isolates,type,point,ci_low,ci_high,excludes_zero,n_images
+fc minus thr,"decision rule, VLM scorer",all,0.07386363636363635,0.005681818181818232,0.13636363636363646,True,88
+fc minus thr,"decision rule, VLM scorer",color,0.07386363636363635,0.005681818181818232,0.13636363636363646,True,88
+fc minus thr,"decision rule, VLM scorer",material,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,0
+fc minus thr,"decision rule, VLM scorer",state,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,0
+thr minus prior,visual evidence under independent probing,all,0.30113636363636365,0.24431818181818177,0.3579545454545454,True,88
+thr minus prior,visual evidence under independent probing,color,0.30113636363636365,0.24431818181818177,0.3579545454545454,True,88
+thr minus prior,visual evidence under independent probing,material,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,0
+thr minus prior,visual evidence under independent probing,state,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,0
+fc minus prior,decision rule plus evidence,all,0.375,0.30113636363636365,0.44318181818181823,True,88
+fc minus prior,decision rule plus evidence,color,0.375,0.30113636363636365,0.44318181818181823,True,88
+fc minus prior,decision rule plus evidence,material,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,0
+fc minus prior,decision rule plus evidence,state,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,NOT_COMPUTED,0

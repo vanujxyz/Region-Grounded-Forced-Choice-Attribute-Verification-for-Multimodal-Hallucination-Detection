@@ -1,0 +1,74 @@
+comparison,isolates,split,type,point,ci_low,ci_high,excludes_zero,n_images
+B minus A,decision rule alone (whole image),dev,all,0.15466666666666662,0.1336666666666667,0.17566666666666664,True,1500
+B minus A,decision rule alone (whole image),dev,color,0.15583333333333327,0.1216666666666667,0.1891666666666667,True,600
+B minus A,decision rule alone (whole image),dev,material,0.17200000000000004,0.136,0.20800000000000007,True,500
+B minus A,decision rule alone (whole image),dev,state,0.1312500000000001,0.08625000000000005,0.17374999999999996,True,400
+C minus A,region grounding alone (threshold),dev,all,0.04933333333333323,0.03500000000000003,0.06299999999999994,True,1500
+C minus A,region grounding alone (threshold),dev,color,0.0741666666666666,0.050000000000000044,0.09750000000000003,True,600
+C minus A,region grounding alone (threshold),dev,material,0.052000000000000046,0.028000000000000025,0.07600000000000007,True,500
+C minus A,region grounding alone (threshold),dev,state,0.008750000000000036,-0.01749999999999996,0.03375000000000006,False,400
+D minus C,decision rule given crop,dev,all,0.16533333333333333,0.14533333333333343,0.18533333333333335,True,1500
+D minus C,decision rule given crop,dev,color,0.19166666666666665,0.16166666666666663,0.22166666666666657,True,600
+D minus C,decision rule given crop,dev,material,0.17400000000000004,0.139,0.20699999999999996,True,500
+D minus C,decision rule given crop,dev,state,0.11499999999999999,0.07125000000000004,0.15749999999999997,True,400
+D minus B,region grounding given forced choice,dev,all,0.05999999999999994,0.036666666666666736,0.08266666666666667,True,1500
+D minus B,region grounding given forced choice,dev,color,0.10999999999999999,0.07333333333333336,0.1466666666666666,True,600
+D minus B,region grounding given forced choice,dev,material,0.05400000000000005,0.020000000000000018,0.08804999999999935,True,500
+D minus B,region grounding given forced choice,dev,state,-0.007500000000000062,-0.057499999999999996,0.04249999999999998,False,400
+D minus A,HEADLINE: both,dev,all,0.21466666666666656,0.19333333333333336,0.236,True,1500
+D minus A,HEADLINE: both,dev,color,0.26583333333333325,0.23416666666666675,0.2958333333333334,True,600
+D minus A,HEADLINE: both,dev,material,0.2260000000000001,0.19000000000000006,0.2609999999999999,True,500
+D minus A,HEADLINE: both,dev,state,0.12375000000000003,0.07499999999999996,0.17125,True,400
+B minus Ap,forced choice net of base rate,dev,all,0.16533333333333333,0.1439999999999999,0.18666666666666665,True,1500
+B minus Ap,forced choice net of base rate,dev,color,0.1725,0.1383333333333333,0.20585416666666645,True,600
+B minus Ap,forced choice net of base rate,dev,material,0.17500000000000004,0.138,0.21199999999999997,True,500
+B minus Ap,forced choice net of base rate,dev,state,0.14250000000000007,0.09996875000000001,0.18375000000000008,True,400
+CalNullA minus A,VISOR-style calibration (whole image),dev,all,0.0,0.0,0.0,False,1500
+CalNullA minus A,VISOR-style calibration (whole image),dev,color,0.0,0.0,0.0,False,600
+CalNullA minus A,VISOR-style calibration (whole image),dev,material,0.0,0.0,0.0,False,500
+CalNullA minus A,VISOR-style calibration (whole image),dev,state,0.0,0.0,0.0,False,400
+CalNullC minus C,VISOR-style calibration (crop),dev,all,0.0,0.0,0.0,False,1500
+CalNullC minus C,VISOR-style calibration (crop),dev,color,0.0,0.0,0.0,False,600
+CalNullC minus C,VISOR-style calibration (crop),dev,material,0.0,0.0,0.0,False,500
+CalNullC minus C,VISOR-style calibration (crop),dev,state,0.0,0.0,0.0,False,400
+CalWordC minus C,per-word calibration (crop),dev,all,0.08966666666666667,0.07433333333333336,0.10499999999999998,True,1500
+CalWordC minus C,per-word calibration (crop),dev,color,0.06583333333333341,0.043333333333333335,0.08833333333333337,True,600
+CalWordC minus C,per-word calibration (crop),dev,material,0.08999999999999997,0.06400000000000006,0.11499999999999999,True,500
+CalWordC minus C,per-word calibration (crop),dev,state,0.125,0.09249999999999992,0.15625,True,400
+B minus CalNullA,forced choice vs calibration (whole image),dev,all,0.15466666666666662,0.1336666666666667,0.17566666666666664,True,1500
+B minus CalNullA,forced choice vs calibration (whole image),dev,color,0.15583333333333327,0.1216666666666667,0.1891666666666667,True,600
+B minus CalNullA,forced choice vs calibration (whole image),dev,material,0.17200000000000004,0.136,0.20800000000000007,True,500
+B minus CalNullA,forced choice vs calibration (whole image),dev,state,0.1312500000000001,0.08625000000000005,0.17374999999999996,True,400
+D minus CalNullC,forced choice vs calibration (crop),dev,all,0.16533333333333333,0.14533333333333343,0.18533333333333335,True,1500
+D minus CalNullC,forced choice vs calibration (crop),dev,color,0.19166666666666665,0.16166666666666663,0.22166666666666657,True,600
+D minus CalNullC,forced choice vs calibration (crop),dev,material,0.17400000000000004,0.139,0.20699999999999996,True,500
+D minus CalNullC,forced choice vs calibration (crop),dev,state,0.11499999999999999,0.07125000000000004,0.15749999999999997,True,400
+D minus CalWordC,forced choice vs per-word calibration (crop),dev,all,0.07566666666666666,0.05233333333333334,0.09933333333333327,True,1500
+D minus CalWordC,forced choice vs per-word calibration (crop),dev,color,0.12583333333333324,0.09166666666666667,0.15916666666666668,True,600
+D minus CalWordC,forced choice vs per-word calibration (crop),dev,material,0.08400000000000007,0.04500000000000004,0.123,True,500
+D minus CalWordC,forced choice vs per-word calibration (crop),dev,state,-0.010000000000000009,-0.06374999999999997,0.043749999999999956,False,400
+Cstar minus A,oracle grounding alone (threshold),dev,all,0.04899999999999993,0.03433333333333344,0.06333333333333335,True,1500
+Cstar minus A,oracle grounding alone (threshold),dev,color,0.08333333333333326,0.0591666666666667,0.10666666666666669,True,600
+Cstar minus A,oracle grounding alone (threshold),dev,material,0.04600000000000004,0.02100000000000002,0.07099999999999995,True,500
+Cstar minus A,oracle grounding alone (threshold),dev,state,0.0012500000000000844,-0.025000000000000022,0.02749999999999997,False,400
+Dstar minus D,oracle box vs detector box (forced choice),dev,all,0.015333333333333421,-0.0020000000000000018,0.033333333333333326,False,1500
+Dstar minus D,oracle box vs detector box (forced choice),dev,color,0.010000000000000009,-0.015000000000000013,0.03500000000000003,False,600
+Dstar minus D,oracle box vs detector box (forced choice),dev,material,0.025999999999999912,-0.0020000000000000018,0.05599999999999994,False,500
+Dstar minus D,oracle box vs detector box (forced choice),dev,state,0.010000000000000009,-0.03249999999999997,0.05249999999999999,False,400
+Dstar minus Cstar,decision rule given oracle box,dev,all,0.18100000000000005,0.16166666666666663,0.20100000000000007,True,1500
+Dstar minus Cstar,decision rule given oracle box,dev,color,0.1925,0.16249999999999998,0.22166666666666668,True,600
+Dstar minus Cstar,decision rule given oracle box,dev,material,0.20599999999999996,0.17400000000000004,0.238,True,500
+Dstar minus Cstar,decision rule given oracle box,dev,state,0.13249999999999995,0.08875,0.17499999999999993,True,400
+CalWordC minus WordPrior,per-word calibration net of the image-blind word prior,dev,all,0.09399999999999997,0.07665833333333334,0.11199999999999999,True,1500
+CalWordC minus WordPrior,per-word calibration net of the image-blind word prior,dev,color,0.11583333333333334,0.08666666666666667,0.1441874999999997,True,600
+CalWordC minus WordPrior,per-word calibration net of the image-blind word prior,dev,material,0.09299999999999997,0.06299999999999994,0.123,True,500
+CalWordC minus WordPrior,per-word calibration net of the image-blind word prior,dev,state,0.0625,0.030000000000000027,0.09375,True,400
+D minus FCnull,forced choice net of the scorer's text-only preference,dev,all,0.2466666666666666,0.21466666666666667,0.27866666666666673,True,1500
+D minus FCnull,forced choice net of the scorer's text-only preference,dev,color,0.35,0.29999999999999993,0.3983333333333334,True,600
+D minus FCnull,forced choice net of the scorer's text-only preference,dev,material,0.2220000000000001,0.17000000000000004,0.2739999999999999,True,500
+D minus FCnull,forced choice net of the scorer's text-only preference,dev,state,0.12249999999999994,0.06000000000000005,0.18499999999999994,True,400
+D minus WordPrior,proposed vs image-blind word prior,dev,all,0.16966666666666663,0.14300000000000002,0.19666666666666666,True,1500
+D minus WordPrior,proposed vs image-blind word prior,dev,color,0.24166666666666659,0.2008333333333333,0.2816666666666666,True,600
+D minus WordPrior,proposed vs image-blind word prior,dev,material,0.17700000000000005,0.131,0.22199999999999998,True,500
+D minus WordPrior,proposed vs image-blind word prior,dev,state,0.05249999999999999,-0.003750000000000031,0.10750000000000004,False,400
+Dext minus A (covered),"external contrast, matched subset",dev,all,0.140191628845184,0.11355278115726196,0.166668765743073,True,1204

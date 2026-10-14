@@ -1,0 +1,34 @@
+{
+ "amber_CalNullA": {
+  "gamma": 0.0,
+  "tau": -11.027273654937744
+ },
+ "amber_CalWordA": {
+  "n_words": 52,
+  "global_tau": -11.027273654937744
+ },
+ "amber_CalNullC": {
+  "gamma": 0.1,
+  "tau": -3.5526051998138426
+ },
+ "amber_CalWordC": {
+  "n_words": 52,
+  "global_tau": -5.086052179336548
+ },
+ "shroom_CalNullA": {
+  "gamma": 0.05,
+  "tau": -7.5300022840499885
+ },
+ "shroom_CalWordA": {
+  "n_words": 47,
+  "global_tau": -8.214372634887695
+ },
+ "shroom_CalNullC": {
+  "gamma": 0.05,
+  "tau": -4.246971893310547
+ },
+ "shroom_CalWordC": {
+  "n_words": 47,
+  "global_tau": -5.092499017715454
+ }
+}

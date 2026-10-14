@@ -1,0 +1,12 @@
+{
+ "interaction": 0.02633333333333332,
+ "ties": {
+  "B": 0,
+  "D": 0,
+  "Dstar": 0,
+  "FCnull": 0
+ },
+ "dext_coverage": 0.6286666666666667,
+ "fallback_rate": 0.08,
+ "source_log": "vaw_test_20261013T165949Z.jsonl"
+}
